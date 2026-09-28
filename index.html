@@ -27,7 +27,7 @@
 </head>
 <body>
 
-<!-- ambient orbit field, drawn once behind the whole shell -->
+<!-- ambient orbit field -->
 <div class="field" aria-hidden="true">
   <svg viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
     <defs>
@@ -42,24 +42,38 @@
     <rect width="400" height="400" fill="url(#grid)" opacity=".5"/>
     <rect width="400" height="400" fill="url(#glow)"/>
     <g fill="none" stroke="currentColor" stroke-width=".8" opacity=".5">
-      <ellipse cx="330" cy="70"  rx="86" ry="34" transform="rotate(28 330 70)"/>
-      <ellipse cx="330" cy="70"  rx="86" ry="34" transform="rotate(88 330 70)"/>
-      <ellipse cx="330" cy="70"  rx="86" ry="34" transform="rotate(148 330 70)"/>
-      <ellipse cx="55"  cy="330" rx="66" ry="26" transform="rotate(-34 55 330)"/>
-      <ellipse cx="55"  cy="330" rx="66" ry="26" transform="rotate(26 55 330)"/>
+      <ellipse cx="330" cy="70" rx="86" ry="34" transform="rotate(28 330 70)"/>
+      <ellipse cx="330" cy="70" rx="86" ry="34" transform="rotate(88 330 70)"/>
+      <ellipse cx="330" cy="70" rx="86" ry="34" transform="rotate(148 330 70)"/>
+      <ellipse cx="55" cy="330" rx="66" ry="26" transform="rotate(-34 55 330)"/>
+      <ellipse cx="55" cy="330" rx="66" ry="26" transform="rotate(26 55 330)"/>
     </g>
   </svg>
 </div>
 
+<!-- ══════════ LOCK SCREEN ══════════ -->
+<div class="lockwrap" id="lockScreen" hidden>
+  <div class="lockbox">
+    <img src="logo.png" alt="" width="84" height="84">
+    <h1 id="lockTitle">الموقع مغلق مؤقتاً</h1>
+    <p id="lockMsg"></p>
+    <button class="lock-admin" id="lockAdmin" type="button">دخول الإدارة</button>
+  </div>
+</div>
+
 <div class="shell">
 
-  <!-- ─────────── top bar ─────────── -->
   <header class="topbar">
-    <img class="mark" src="logo.png" alt="شعار نواة المستقبل" width="40" height="40">
+    <img class="mark" src="logo.png" alt="شعار الشركة" width="40" height="40">
     <div class="wordmark">
-      <strong>نواة المستقبل</strong>
-      <span>للخدمات المتكاملة — مدينة الضبعة</span>
+      <strong id="bCompany">نواة المستقبل</strong>
+      <span id="bTagline">للخدمات المتكاملة — مدينة الضبعة</span>
     </div>
+    <button class="ghost-btn" id="btnAdmin" type="button" aria-label="لوحة الإدارة" title="لوحة الإدارة">
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+        <path d="M12 2.8 20 6v6c0 4.6-3.3 7.7-8 9.2C7.3 19.7 4 16.6 4 12V6l8-3.2Z"/><path d="m9 12 2.2 2.2L15.4 10"/>
+      </svg>
+    </button>
     <button class="ghost-btn" id="btnSettings" type="button" aria-label="الإعدادات">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
         <circle cx="12" cy="12" r="3.1"/>
@@ -73,7 +87,6 @@
     <!-- ══════════ HOME ══════════ -->
     <section class="view" id="v-home">
 
-      <!-- install banner: the first thing on the page, on every platform -->
       <div class="install" id="installCard">
         <div class="install-atom" aria-hidden="true">
           <svg viewBox="0 0 64 64">
@@ -92,28 +105,21 @@
         <button class="btn btn-volt" id="btnInstall" type="button">تثبيت</button>
       </div>
 
-      <!-- hero -->
       <section class="hero">
         <div class="hero-art" aria-hidden="true">
           <svg viewBox="0 0 220 220">
-            <g class="spin-a" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".85">
-              <ellipse cx="110" cy="110" rx="86" ry="34"/>
-            </g>
-            <g class="spin-b" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".7">
-              <ellipse cx="110" cy="110" rx="86" ry="34" transform="rotate(60 110 110)"/>
-            </g>
-            <g class="spin-c" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".55">
-              <ellipse cx="110" cy="110" rx="86" ry="34" transform="rotate(120 110 110)"/>
-            </g>
+            <g class="spin-a" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".85"><ellipse cx="110" cy="110" rx="86" ry="34"/></g>
+            <g class="spin-b" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".7"><ellipse cx="110" cy="110" rx="86" ry="34" transform="rotate(60 110 110)"/></g>
+            <g class="spin-c" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".55"><ellipse cx="110" cy="110" rx="86" ry="34" transform="rotate(120 110 110)"/></g>
             <circle cx="196" cy="110" r="4.5" fill="#F2B705" class="e1"/>
-            <circle cx="67"  cy="35"  r="4"   fill="#4E6BD6" class="e2"/>
-            <circle cx="67"  cy="185" r="4"   fill="#7FE3C3" class="e3"/>
+            <circle cx="67" cy="35" r="4" fill="#4E6BD6" class="e2"/>
+            <circle cx="67" cy="185" r="4" fill="#7FE3C3" class="e3"/>
             <path d="M114 78 96 112h11l-3 32 21-38h-11l4-28Z" fill="currentColor"/>
           </svg>
         </div>
         <p class="eyebrow">خدمات المدينة السكنية</p>
-        <h1>عطل في البيت؟<br>الطلب يوصل الفني في دقيقة.</h1>
-        <p class="lede">سجّل العطل، حدد مكانه ودرجة أولويته، وتابع حالته خطوة بخطوة حتى الإصلاح.</p>
+        <h1 id="heroTitle">عطل في البيت؟ الطلب يوصل الفني في دقيقة.</h1>
+        <p class="lede" id="heroLede">سجّل العطل، حدد مكانه ودرجة أولويته، وتابع حالته خطوة بخطوة حتى الإصلاح.</p>
         <div class="hero-cta">
           <button class="btn btn-primary btn-lg" data-go="new" type="button">
             <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -126,18 +132,15 @@
         </div>
       </section>
 
-      <!-- live counters -->
-      <div class="counters" id="counters">
+      <div class="counters">
         <div class="counter"><b id="cOpen">0</b><span>طلب مفتوح</span></div>
         <div class="counter"><b id="cWork">0</b><span>جاري التنفيذ</span></div>
         <div class="counter"><b id="cDone">0</b><span>تم الإصلاح</span></div>
       </div>
 
-      <!-- services -->
       <h2 class="sec">اختر نوع الخدمة</h2>
       <div class="svc-grid" id="svcGrid"></div>
 
-      <!-- verify the technician — straight out of items 2 & 6 of the letter -->
       <section class="card verify">
         <div class="verify-head">
           <span class="shield" aria-hidden="true">
@@ -156,23 +159,21 @@
         <p class="fine">أي عمل خارج نطاق أمر الشغل المعتمد غير مسموح به. للإبلاغ اتصل بالخط الساخن.</p>
       </section>
 
-      <!-- hours -->
       <section class="card hours">
         <div class="hours-row">
           <div>
             <span class="k">الصيانة الدورية</span>
-            <b class="v">٨ ص — ٥ م</b>
-            <span class="f">يومياً عدا الجمعة</span>
+            <b class="v" id="hRoutine">٨ ص — ٥ م</b>
+            <span class="f" id="hRoutineNote">يومياً عدا الجمعة</span>
           </div>
           <div class="hr-sep" aria-hidden="true"></div>
           <div>
             <span class="k">الطوارئ</span>
-            <b class="v live">٢٤ ساعة<i class="pulse" aria-hidden="true"></i></b>
-            <span class="f">نظام ورديات متصل</span>
+            <b class="v live" id="hEmergency">٢٤ ساعة<i class="pulse" aria-hidden="true"></i></b>
+            <span class="f" id="hEmergencyNote">نظام ورديات متصل</span>
           </div>
         </div>
       </section>
-
     </section>
 
     <!-- ══════════ NEW REQUEST ══════════ -->
@@ -185,7 +186,6 @@
       </div>
 
       <form id="reqForm" novalidate>
-
         <fieldset class="step">
           <legend><i>١</i> نوع الخدمة</legend>
           <div class="pick-grid" id="pickSvc" role="radiogroup" aria-label="نوع الخدمة"></div>
@@ -195,59 +195,18 @@
         <fieldset class="step">
           <legend><i>٢</i> موقع العطل</legend>
           <div class="grid-2">
-            <label class="fld">
-              <span>المنطقة</span>
-              <select id="fArea">
-                <option value="">اختر…</option>
-                <option>المنطقة السكنية أ</option>
-                <option>المنطقة السكنية ب</option>
-                <option>المنطقة السكنية ج</option>
-                <option>منطقة الخدمات</option>
-                <option>النادي والمرافق</option>
-              </select>
-            </label>
-            <label class="fld">
-              <span>رقم العمارة</span>
-              <input id="fBlock" inputmode="numeric" autocomplete="off" placeholder="مثال: ١٤">
-            </label>
-            <label class="fld">
-              <span>الدور</span>
-              <input id="fFloor" inputmode="numeric" autocomplete="off" placeholder="مثال: ٣">
-            </label>
-            <label class="fld">
-              <span>رقم الشقة</span>
-              <input id="fFlat" inputmode="numeric" autocomplete="off" placeholder="مثال: ٣٠٢">
-            </label>
+            <label class="fld"><span>المنطقة</span><select id="fArea"></select></label>
+            <label class="fld"><span>رقم العمارة</span><input id="fBlock" inputmode="numeric" autocomplete="off" placeholder="مثال: ١٤"></label>
+            <label class="fld"><span>الدور</span><input id="fFloor" inputmode="numeric" autocomplete="off" placeholder="مثال: ٣"></label>
+            <label class="fld"><span>رقم الشقة</span><input id="fFlat" inputmode="numeric" autocomplete="off" placeholder="مثال: ٣٠٢"></label>
           </div>
-          <label class="fld">
-            <span>مكان العطل داخل الوحدة</span>
-            <select id="fSpot">
-              <option value="">اختر…</option>
-              <option>المطبخ</option>
-              <option>الحمام</option>
-              <option>غرفة المعيشة</option>
-              <option>غرفة النوم</option>
-              <option>البلكونة</option>
-              <option>المدخل / السلم</option>
-              <option>خارج الوحدة</option>
-            </select>
-          </label>
+          <label class="fld"><span>مكان العطل داخل الوحدة</span><select id="fSpot"></select></label>
           <p class="err" id="errLoc" hidden>حدد المنطقة ورقم العمارة والشقة على الأقل</p>
         </fieldset>
 
         <fieldset class="step">
           <legend><i>٣</i> درجة الأولوية</legend>
-          <div class="prio" id="pickPrio" role="radiogroup" aria-label="درجة الأولوية">
-            <button type="button" class="prio-op" data-v="normal" data-sla="خلال ٤٨ ساعة">
-              <b>عادي</b><span>عطل لا يعطل استخدام الوحدة</span><i>٤٨ ساعة</i>
-            </button>
-            <button type="button" class="prio-op" data-v="high" data-sla="خلال ٨ ساعات">
-              <b>هام</b><span>يؤثر على استخدام جزء من الوحدة</span><i>٨ ساعات</i>
-            </button>
-            <button type="button" class="prio-op" data-v="urgent" data-sla="خلال ساعة">
-              <b>طارئ</b><span>تسريب، ماس كهربائي، انقطاع كامل</span><i>ساعة واحدة</i>
-            </button>
-          </div>
+          <div class="prio" id="pickPrio" role="radiogroup" aria-label="درجة الأولوية"></div>
           <p class="err" id="errPrio" hidden>اختر درجة الأولوية</p>
         </fieldset>
 
@@ -270,15 +229,12 @@
             <div class="shot-list" id="shotList"></div>
           </div>
 
-          <label class="fld">
-            <span>رقم الموبايل للتواصل</span>
-            <input id="fPhone" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX">
-          </label>
+          <label class="fld"><span>رقم الموبايل للتواصل</span><input id="fPhone" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX"></label>
           <p class="err" id="errPhone" hidden>اكتب رقم موبايل صحيح (١١ رقم)</p>
         </fieldset>
 
-        <button class="btn btn-primary btn-lg btn-block" type="submit" id="btnSubmit">إرسال الطلب</button>
-        <p class="fine center">بإرسال الطلب تُسجَّل بياناتك لدى إدارة الصيانة ويصلك رقم الطلب فوراً.</p>
+        <button class="btn btn-primary btn-lg btn-block" type="submit">إرسال الطلب</button>
+        <p class="fine center">بإرسال الطلب يُسجَّل لديك رقم الطلب فوراً، ثم تُرسله لإدارة الصيانة بضغطة واحدة.</p>
       </form>
     </section>
 
@@ -295,7 +251,7 @@
       <div id="reqList"></div>
     </section>
 
-    <!-- ══════════ REQUEST DETAIL ══════════ -->
+    <!-- ══════════ DETAIL ══════════ -->
     <section class="view" id="v-detail" hidden>
       <div class="vhead">
         <button class="back" data-go="list" type="button" aria-label="رجوع">
@@ -311,17 +267,7 @@
       <div class="vhead"><h2>الطوارئ والخط الساخن</h2></div>
       <p class="lede tight">خدمة الطوارئ تعمل على مدار ٢٤ ساعة بنظام ورديات. اضغط على الرقم للاتصال مباشرة.</p>
       <div id="emgList"></div>
-
-      <section class="card authority">
-        <h3>هيئة المحطات النووية لتوليد الكهرباء</h3>
-        <dl class="kv">
-          <dt>العباسية — القاهرة</dt><dd><a href="tel:15827">١٥٨٢٧</a> · <a href="tel:0222611480">٠٢/٢٢٦١١٤٨٠</a></dd>
-          <dt>الضبعة</dt><dd><a href="tel:0464670536">٠٤٦/٤٦٧٠٥٣٦</a></dd>
-          <dt>فاكس العباسية</dt><dd>٠٢/٢٢٦١٦٤٧٦</dd>
-          <dt>فاكس الضبعة</dt><dd>٠٤٦/٤٦٧٠٨٤٦</dd>
-        </dl>
-        <p class="fine">امتداد رمسيس — أول مدينة نصر — العباسية — القاهرة · ص.ب ١٠٨ — رقم بريدي ١١٣٨١</p>
-      </section>
+      <section class="card authority" id="authCard"></section>
     </section>
 
     <!-- ══════════ SETTINGS ══════════ -->
@@ -344,29 +290,40 @@
         <p class="fine">تُحفظ على جهازك فقط، وتُملأ تلقائياً في كل طلب جديد.</p>
       </section>
 
-      <section class="card" id="adminCard">
-        <h3>أرقام الطوارئ <span class="tag">للإدارة</span></h3>
-        <p class="fine mb">اكتب الأرقام مرة واحدة وستظهر لكل من يفتح التطبيق على هذا الجهاز. لتثبيتها لكل المستخدمين، عدّل <code>CONFIG.lines</code> في ملف <code>app.js</code>.</p>
-        <div id="adminLines"></div>
-      </section>
-
       <section class="card">
         <h3>التطبيق</h3>
         <div class="rows">
-          <button class="row-btn" id="btnInstall2" type="button">
-            <span>تثبيت على الشاشة الرئيسية</span><em id="installState">متاح</em>
-          </button>
-          <button class="row-btn" id="btnClear" type="button">
-            <span>مسح كل الطلبات من هذا الجهاز</span><em class="danger">مسح</em>
-          </button>
+          <button class="row-btn" id="btnInstall2" type="button"><span>تثبيت على الشاشة الرئيسية</span><em id="installState">متاح</em></button>
+          <button class="row-btn" data-go="admin" type="button"><span>لوحة الإدارة</span><em id="adminRow">تحتاج كلمة مرور</em></button>
+          <button class="row-btn" id="btnClear" type="button"><span>مسح كل الطلبات من هذا الجهاز</span><em class="danger">مسح</em></button>
         </div>
         <p class="fine">الإصدار ١٫٠ · يعمل بدون إنترنت بعد أول فتح.</p>
       </section>
     </section>
 
+    <!-- ══════════ ADMIN ══════════ -->
+    <section class="view" id="v-admin" hidden>
+      <div class="vhead">
+        <button class="back" data-go="home" type="button" aria-label="رجوع">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <h2>لوحة الإدارة</h2>
+        <i class="pub-dot" id="pubDot" hidden title="تعديلات غير منشورة"></i>
+      </div>
+
+      <div class="adm-tabs" id="admTabs">
+        <button class="chip on" data-t="services" type="button">الخدمات</button>
+        <button class="chip" data-t="lines" type="button">الأرقام</button>
+        <button class="chip" data-t="content" type="button">النصوص</button>
+        <button class="chip" data-t="lock" type="button">القفل</button>
+        <button class="chip" data-t="publish" type="button">نشر</button>
+      </div>
+
+      <div class="card adm-card" id="admBody"></div>
+    </section>
+
   </main>
 
-  <!-- ─────────── tab bar ─────────── -->
   <nav class="tabbar" id="tabbar" aria-label="التنقل">
     <button class="tab on" data-go="home" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19Z"/><path d="M9.5 20.5v-6h5v6"/></svg>
@@ -378,29 +335,43 @@
     </button>
     <button class="tab" data-go="list" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.6" cy="6" r="1.3"/><circle cx="4.6" cy="12" r="1.3"/><circle cx="4.6" cy="18" r="1.3"/></svg>
-      <span>طلباتي</span>
-      <i class="dot" id="tabDot" hidden></i>
+      <span>طلباتي</span><i class="dot" id="tabDot" hidden></i>
     </button>
     <button class="tab" data-go="emergency" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.6 2.4 21h19.2L12 2.6Z"/><path d="M12 9.4v5M12 17.6v.1"/></svg>
       <span>طوارئ</span>
     </button>
+    <button class="tab" data-go="admin" type="button" id="adminTab" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 2.8 20 6v6c0 4.6-3.3 7.7-8 9.2C7.3 19.7 4 16.6 4 12V6l8-3.2Z"/><path d="m9 12 2.2 2.2L15.4 10"/></svg>
+      <span>الإدارة</span>
+    </button>
   </nav>
 </div>
 
-<!-- iOS install instructions -->
+<!-- password sheet -->
+<div class="sheet-wrap" id="passSheet" hidden>
+  <div class="sheet-bg" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="passTitle">
+    <span class="grip" aria-hidden="true"></span>
+    <h3 id="passTitle">دخول الإدارة</h3>
+    <p class="fine center">اكتب كلمة المرور للوصول للوحة التحكم.</p>
+    <label class="fld"><input id="passInput" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••" class="pass-in"></label>
+    <p class="err center" id="passErr" hidden>كلمة المرور غير صحيحة</p>
+    <button class="btn btn-primary btn-block" id="passGo" type="button">دخول</button>
+    <button class="btn btn-quiet btn-block" data-close type="button">إلغاء</button>
+  </div>
+</div>
+
+<!-- iOS install sheet -->
 <div class="sheet-wrap" id="iosSheet" hidden>
   <div class="sheet-bg" data-close></div>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="iosTitle">
     <span class="grip" aria-hidden="true"></span>
     <h3 id="iosTitle">التثبيت على الآيفون</h3>
     <ol class="steps">
-      <li>
-        <span class="n">١</span>
-        <p>اضغط على زر المشاركة
-          <svg class="ios-share" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8.2 6.6 3.8-3.8 3.8 3.8"/><path d="M6 11H5a1.6 1.6 0 0 0-1.6 1.6v6.8A1.6 1.6 0 0 0 5 21h14a1.6 1.6 0 0 0 1.6-1.6v-6.8A1.6 1.6 0 0 0 19 11h-1"/></svg>
-          في شريط سفاري السفلي</p>
-      </li>
+      <li><span class="n">١</span><p>اضغط على زر المشاركة
+        <svg class="ios-share" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8.2 6.6 3.8-3.8 3.8 3.8"/><path d="M6 11H5a1.6 1.6 0 0 0-1.6 1.6v6.8A1.6 1.6 0 0 0 5 21h14a1.6 1.6 0 0 0 1.6-1.6v-6.8A1.6 1.6 0 0 0 19 11h-1"/></svg>
+        في شريط سفاري السفلي</p></li>
       <li><span class="n">٢</span><p>اختر <b>«إضافة إلى الشاشة الرئيسية»</b> · Add to Home Screen</p></li>
       <li><span class="n">٣</span><p>اضغط <b>«إضافة»</b> — وهيظهر بالشعار على شاشتك</p></li>
     </ol>
@@ -416,11 +387,18 @@
     <div class="done-tick" aria-hidden="true">
       <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="m16 26.8 7 7L37 20" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
-    <h3 id="doneTitle">تم استلام طلبك</h3>
+    <h3 id="doneTitle">تم حفظ طلبك</h3>
     <p class="done-no">رقم الطلب <b id="doneNo">—</b></p>
     <p class="fine center" id="doneSla">—</p>
-    <button class="btn btn-primary btn-block" id="btnDoneTrack" type="button">تابع حالة الطلب</button>
-    <button class="btn btn-quiet btn-block" data-close type="button">إغلاق</button>
+    <div class="send-box" id="sendBox">
+      <p class="send-hint">خطوة أخيرة — ابعت الطلب لإدارة الصيانة:</p>
+      <button class="btn btn-wa btn-block" id="btnWa" type="button">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2Zm5.8 14.2c-.24.68-1.4 1.3-1.94 1.35-.5.05-1.12.07-1.8-.11a16.4 16.4 0 0 1-1.63-.6c-2.87-1.24-4.74-4.13-4.88-4.32-.14-.2-1.17-1.55-1.17-2.96 0-1.4.74-2.09 1-2.38.26-.29.57-.36.76-.36l.54.01c.18.01.41-.07.64.49l.88 2.13c.07.15.12.32.02.51l-.3.45-.44.48c-.14.14-.29.3-.12.58.16.29.73 1.2 1.56 1.94 1.07.96 1.98 1.25 2.26 1.4.28.14.44.12.6-.07l.86-1c.2-.24.37-.19.62-.1l2.03.96c.25.12.42.18.48.28.06.1.06.58-.18 1.26Z"/></svg>
+        إرسال على واتساب
+      </button>
+      <button class="btn btn-quiet btn-block" id="btnCopyReq" type="button">📋 نسخ نص الطلب</button>
+    </div>
+    <button class="btn btn-quiet btn-block" id="btnDoneTrack" type="button">تابع حالة الطلب</button>
   </div>
 </div>
 

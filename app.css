@@ -658,3 +658,152 @@ form{ display:flex; flex-direction:column; gap:16px; }
   .svc-grid,.pick-grid{ grid-template-columns:repeat(3,1fr); }
   .hero-cta{ flex-direction:column; }
 }
+
+/* ══════════════════════════════════════════════════════
+   الإضافات: لوحة الإدارة · شاشة القفل · إرسال واتساب
+   ══════════════════════════════════════════════════════ */
+
+.ltr{ direction:ltr; text-align:start; }
+.mt{ margin-top:10px; }
+.desc{ margin-top:12px !important; color:var(--ink) !important; }
+.d-shots{ margin-top:12px; }
+
+/* ── lock screen ─────────────────────────────────────── */
+.lockwrap{
+  position:fixed; inset:0; z-index:80;
+  display:grid; place-items:center; padding:24px;
+  background:linear-gradient(165deg,#1B2560,#111846 55%,#221A4B);
+}
+.lockbox{
+  text-align:center; color:#fff; max-width:340px;
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+}
+.lockbox img{ border-radius:50%; background:#fff; padding:6px; }
+.lockbox h1{
+  font-family:var(--font-dis); font-weight:600; font-size:23px; margin:0;
+  text-wrap:balance;
+}
+.lockbox p{ margin:0; font-size:14.5px; color:rgba(255,255,255,.7); line-height:1.8; }
+.lock-admin{
+  margin-top:10px; font-family:inherit; font-size:12.5px; font-weight:500;
+  background:rgba(255,255,255,.1); color:rgba(255,255,255,.8);
+  border:1px solid rgba(255,255,255,.2); border-radius:11px;
+  padding:9px 18px; cursor:pointer;
+}
+.lock-admin:active{ background:rgba(255,255,255,.18); }
+
+/* ── whatsapp send ───────────────────────────────────── */
+.btn-wa{ background:#1FA855; color:#fff; box-shadow:0 8px 18px -10px rgba(31,168,85,.9); }
+.send-box{
+  border-top:1px solid var(--line-soft); padding-top:14px; margin-top:4px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.send-hint{ margin:0 0 2px; font-size:12.5px; color:var(--muted); text-align:center; }
+
+/* ── admin panel ─────────────────────────────────────── */
+.pub-dot{
+  width:9px; height:9px; border-radius:50%; background:var(--volt);
+  margin-inline-start:auto; flex:none;
+  box-shadow:0 0 0 0 rgba(242,183,5,.6); animation:beat3 2s ease-out infinite;
+}
+@keyframes beat3{ to{ box-shadow:0 0 0 10px rgba(242,183,5,0); } }
+
+.adm-tabs{ display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; }
+.adm-tabs::-webkit-scrollbar{ display:none; }
+.adm-tabs .chip{ white-space:nowrap; flex:none; }
+
+.adm-card{ padding:15px; }
+.adm-h{
+  font-family:var(--font-dis); font-weight:600; font-size:13.5px;
+  color:var(--navy); margin:18px 0 2px;
+  display:flex; align-items:center; gap:8px;
+}
+.adm-h:first-child{ margin-top:0; }
+.adm-h::after{ content:""; flex:1; height:1px; background:var(--line-soft); }
+
+.adm-list{ display:flex; flex-direction:column; gap:8px; }
+.adm-item{
+  display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+  background:var(--surface-2); border:1px solid var(--line);
+  border-radius:13px; padding:9px;
+}
+.adm-item .ic{ width:34px; height:34px; border-radius:10px; display:grid; place-items:center; flex:none; }
+.adm-item .ic svg{ width:18px; height:18px; }
+.adm-item input{
+  font-family:inherit; font-size:14px; color:var(--ink);
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:9px; padding:8px 10px; min-width:0;
+}
+.adm-item input:focus{ outline:none; border-color:var(--sky); box-shadow:0 0 0 3px rgba(78,107,214,.15); }
+.adm-name{ flex:1; min-width:110px; }
+.adm-item.line{ flex-wrap:wrap; }
+.adm-item.line .adm-name{ flex:1 1 44%; }
+.adm-tel{ flex:1 1 44%; }
+.adm-desc{ flex:1 1 100%; font-size:12.5px !important; color:var(--muted) !important; }
+
+.adm-ops{ display:flex; gap:4px; flex:none; }
+.adm-ops button{
+  width:30px; height:30px; border-radius:9px; flex:none;
+  border:1px solid var(--line); background:var(--surface);
+  color:var(--muted); font-size:13px; cursor:pointer;
+  display:grid; place-items:center; padding:0; font-family:inherit;
+}
+.adm-ops button:active{ background:var(--sky-soft); }
+.adm-ops button.dl{ color:var(--urgent); }
+
+.adm-edit{ flex:1 1 100%; border-top:1px dashed var(--line); padding-top:10px; margin-top:2px; }
+.pal{ display:flex; flex-wrap:wrap; gap:6px; }
+.pal.cols{ margin-top:8px; }
+.pal-i{
+  width:34px; height:34px; border-radius:9px; flex:none;
+  border:1.5px solid var(--line); background:var(--surface);
+  color:var(--muted); display:grid; place-items:center; cursor:pointer; padding:0;
+}
+.pal-i svg{ width:17px; height:17px; }
+.pal-i.on{ border-color:var(--navy); color:var(--navy); background:var(--sky-soft); }
+.pal-c{
+  width:34px; height:34px; border-radius:9px; flex:none;
+  border:1.5px solid transparent; cursor:pointer; padding:0;
+  display:grid; place-items:center;
+}
+.pal-c i{ width:13px; height:13px; border-radius:50%; display:block; }
+.pal-c.on{ box-shadow:0 0 0 2px var(--surface), 0 0 0 4px currentColor; }
+
+/* lock card */
+.lock-card{
+  display:flex; align-items:center; gap:12px;
+  border:1.5px solid var(--line); background:var(--surface-2);
+  border-radius:15px; padding:14px; margin-bottom:14px;
+}
+.lock-card.on{ border-color:var(--urgent); background:var(--urgent-bg); }
+.lock-ico{
+  width:42px; height:42px; border-radius:13px; flex:none;
+  background:var(--ok-bg); color:var(--ok); display:grid; place-items:center;
+}
+.lock-card.on .lock-ico{ background:#fff; color:var(--urgent); }
+.lock-ico svg{ width:21px; height:21px; }
+.lock-tx{ display:flex; flex-direction:column; min-width:0; flex:1; }
+.lock-tx b{ font-size:14.5px; color:var(--ink); }
+.lock-tx span{ font-size:11.5px; color:var(--muted); line-height:1.5; }
+.btn-danger{ background:var(--urgent); color:#fff; box-shadow:0 8px 18px -10px rgba(192,48,74,.9); }
+
+.note-box{
+  border:1px solid var(--line); background:var(--surface-2);
+  border-radius:13px; padding:12px 14px; margin:12px 0;
+}
+.note-box b{ font-size:13px; color:var(--navy); display:block; margin-bottom:4px; }
+.note-box p{ margin:0 !important; font-size:12.5px; line-height:1.75; }
+.note-box.warn{ border-color:#EBC77E; background:var(--warn-bg); }
+.note-box.warn b{ color:var(--warn); }
+.note-box.ok{ border-color:#A9DCCB; background:var(--ok-bg); }
+.note-box.ok b{ color:var(--ok); }
+.mini{ margin:6px 0 0; padding-inline-start:18px; font-size:12.5px; color:var(--muted); line-height:1.9; }
+
+.pass-in{
+  text-align:center; letter-spacing:.4em; font-size:20px !important;
+  direction:ltr; padding:13px !important;
+}
+.err.center{ text-align:center; }
+
+body.is-admin .tabbar{ grid-template-columns:repeat(5,1fr); }
+body.is-admin .tab span{ font-size:9.5px; }

@@ -2,60 +2,11 @@
    نواة المستقبل للخدمات المتكاملة — تطبيق الصيانة
    مدينة الضبعة السكنية
 
-   ── لتخصيص التطبيق، عدّل CONFIG بالأسفل فقط ───────────────────
+   كل المحتوى (الخدمات · الأرقام · النصوص · القفل) يأتي من
+   config.json ويُحرَّر من لوحة الأدمن داخل التطبيق.
    ══════════════════════════════════════════════════════════════ */
 
-const CONFIG = {
-  /* ضع الأرقام الحقيقية هنا وستظهر لكل من يفتح التطبيق.
-     اتركها فارغة "" لتظهر رسالة «لم يُضف بعد» ويمكن للإدارة
-     إدخالها من شاشة الإعدادات على الجهاز.                    */
-  lines: [
-    { id: 'hot',    name: 'الخط الساخن للصيانة', desc: 'كل أعمال الصيانة داخل المدينة', tel: '', hot: true },
-    { id: 'power',  name: 'أعطال الكهرباء',       desc: 'انقطاع التيار · ماس كهربائي',   tel: '' },
-    { id: 'water',  name: 'المياه والتسريبات',    desc: 'قطع المياه · كسر ماسورة',       tel: '' },
-    { id: 'sewer',  name: 'الصرف الصحي',          desc: 'طفح · انسداد',                  tel: '' },
-    { id: 'fire',   name: 'الحريق والإنقاذ',      desc: 'بلاغات الحريق',                 tel: '' },
-    { id: 'guard',  name: 'الأمن — بوابة المدينة', desc: 'بلاغات أمنية · تصاريح',        tel: '' }
-  ],
-  company: 'شركة نواة المستقبل للخدمات المتكاملة',
-  city: 'المدينة السكنية — الضبعة'
-};
-
-/* ── service catalogue (icons are drawn inline, no icon font) ── */
-const SVC = [
-  { id:'plumb', name:'سباكة',  tint:'#E8EDFB', ink:'#2E3C96',
-    d:'M8 3v5M8 5.5h8a3 3 0 0 1 3 3V12M19 16.5a2.5 2.5 0 1 1-5 0c0-1.6 2.5-4.5 2.5-4.5S19 14.9 19 16.5ZM5.5 3h5M4 12h8M6 12v5a3 3 0 0 0 3 3h1' },
-  { id:'elec',  name:'كهرباء', tint:'#FCF0DC', ink:'#B86F14',
-    d:'M13.5 2 5 13h6l-1.5 9L19 11h-6l.5-9Z' },
-  { id:'ac',    name:'تكييف',  tint:'#E4F5EF', ink:'#12805F',
-    d:'M3.5 5.5h17a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 11V7a1.5 1.5 0 0 1 1.5-1.5ZM6 9h.01M9.5 9h5M6.5 16c0 1.6 1.2 2 1.2 3.4M12 16c0 1.6 1.2 2 1.2 3.4M17.5 16c0 1.6 1.2 2 1.2 3.4' },
-  { id:'carp',  name:'نجارة',  tint:'#F3EEE6', ink:'#8A6A38',
-    d:'M4 20h16M6 20V9l6-5 6 5v11M10 20v-5h4v5M9.5 11h5' },
-  { id:'sewer', name:'صرف صحي',tint:'#E8EDFB', ink:'#2E3C96',
-    d:'M4 8h16M6 8v9a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V8M9 4h6v4H9zM10.5 12v4M13.5 12v4' },
-  { id:'clean', name:'نظافة',  tint:'#E4F5EF', ink:'#12805F',
-    d:'M8 3h3v7H8zM6.5 10h6l1.2 10H5.3ZM15 6h5M15 10h4M15 14h5' },
-  { id:'lift',  name:'أسانسير',tint:'#FBE7EA', ink:'#C0304A',
-    d:'M5 3h14a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1ZM12 3v18M8.5 9.5 7 7.5 5.5 9.5M8.5 14.5 7 16.5 5.5 14.5M15 8.5h3.5M15 12h3.5M15 15.5h3.5' },
-  { id:'other', name:'أخرى',   tint:'#EFF1F8', ink:'#6B7492',
-    d:'M11 2.5h2l.4 2.3a7.4 7.4 0 0 1 1.9.8l1.9-1.4 1.4 1.4-1.4 1.9c.36.6.63 1.24.8 1.9l2.3.4v2l-2.3.4a7.4 7.4 0 0 1-.8 1.9l1.4 1.9-1.4 1.4-1.9-1.4c-.6.36-1.24.63-1.9.8L13 21.5h-2l-.4-2.3a7.4 7.4 0 0 1-1.9-.8l-1.9 1.4-1.4-1.4 1.4-1.9a7.4 7.4 0 0 1-.8-1.9l-2.3-.4v-2l2.3-.4c.17-.66.44-1.3.8-1.9L5.4 5.6 6.8 4.2l1.9 1.4c.6-.36 1.24-.63 1.9-.8ZM12 9.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8Z' }
-];
-
-const PRIO = {
-  normal: { label:'عادي',  sla:'خلال ٤٨ ساعة' },
-  high:   { label:'هام',   sla:'خلال ٨ ساعات' },
-  urgent: { label:'طارئ',  sla:'خلال ساعة واحدة' }
-};
-
-/* the fixed path every request walks, straight from the letter:
-   استلام → إسناد لفني بأمر شغل → تنفيذ → إنجاز → غلق */
-const STAGES = [
-  { k:'new',      t:'تم استلام الطلب',        s:'سُجِّل الطلب لدى إدارة الصيانة' },
-  { k:'assigned', t:'إسناد لفني بأمر شغل',    s:'يصدر أمر شغل رسمي معتمد من الشركة' },
-  { k:'work',     t:'جاري التنفيذ',           s:'الفني في الموقع' },
-  { k:'fixed',    t:'تم الإصلاح',             s:'انتهاء أعمال الصيانة' },
-  { k:'closed',   t:'غلق الطلب',              s:'بعد تأكيد الساكن' }
-];
+const ADMIN_PASS = '012750';
 
 /* ── tiny helpers ───────────────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -63,43 +14,137 @@ const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const AR = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
   ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-
-const svg = (d, w) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w || 1.7}" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
-const svcById = (id) => SVC.find((s) => s.id === id) || SVC[SVC.length - 1];
+const uid = () => 's' + Math.random().toString(36).slice(2, 8);
 
 const store = {
-  get(k, dflt) {
-    try { const v = localStorage.getItem('nawah.' + k); return v ? JSON.parse(v) : dflt; }
-    catch (e) { return dflt; }
-  },
-  set(k, v) {
-    try { localStorage.setItem('nawah.' + k, JSON.stringify(v)); return true; }
-    catch (e) { toast('مساحة التخزين ممتلئة'); return false; }
-  }
+  get(k, d) { try { const v = localStorage.getItem('nawah.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('nawah.' + k, JSON.stringify(v)); return true; } catch (e) { toast('مساحة التخزين ممتلئة'); return false; } },
+  del(k)    { try { localStorage.removeItem('nawah.' + k); } catch (e) {} }
 };
 
 let toastTimer;
 function toast(msg) {
   const el = $('#toast');
+  if (!el) return;
   el.textContent = msg;
   el.classList.add('on');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('on'), 2600);
 }
 
-/* ══════════ state ══════════ */
-let requests = store.get('requests', []);
-let profile  = store.get('profile', {});
-let lines    = store.get('lines', {});          // admin-entered numbers, keyed by id
-let draft    = { svc:'', prio:'', shots:[] };
-let listFilter = 'all';
+/* ══════════ icon + colour libraries (admin picks from these) ══════════ */
+const ICONS = {
+  plumb:'M8 3v5M8 5.5h8a3 3 0 0 1 3 3V12M19 16.5a2.5 2.5 0 1 1-5 0c0-1.6 2.5-4.5 2.5-4.5S19 14.9 19 16.5ZM5.5 3h5M4 12h8M6 12v5a3 3 0 0 0 3 3h1',
+  bolt:'M13.5 2 5 13h6l-1.5 9L19 11h-6l.5-9Z',
+  ac:'M3.5 5.5h17a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 11V7a1.5 1.5 0 0 1 1.5-1.5ZM6 9h.01M9.5 9h5M6.5 16c0 1.6 1.2 2 1.2 3.4M12 16c0 1.6 1.2 2 1.2 3.4M17.5 16c0 1.6 1.2 2 1.2 3.4',
+  carp:'M4 20h16M6 20V9l6-5 6 5v11M10 20v-5h4v5M9.5 11h5',
+  sewer:'M4 8h16M6 8v9a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V8M9 4h6v4H9zM10.5 12v4M13.5 12v4',
+  clean:'M8 3h3v7H8zM6.5 10h6l1.2 10H5.3ZM15 6h5M15 10h4M15 14h5',
+  lift:'M5 3h14a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1ZM12 3v18M8.5 9.5 7 7.5 5.5 9.5M8.5 14.5 7 16.5 5.5 14.5M15 8.5h3.5M15 12h3.5M15 15.5h3.5',
+  gear:'M11 2.5h2l.4 2.3a7.4 7.4 0 0 1 1.9.8l1.9-1.4 1.4 1.4-1.4 1.9c.36.6.63 1.24.8 1.9l2.3.4v2l-2.3.4a7.4 7.4 0 0 1-.8 1.9l1.4 1.9-1.4 1.4-1.9-1.4c-.6.36-1.24.63-1.9.8L13 21.5h-2l-.4-2.3a7.4 7.4 0 0 1-1.9-.8l-1.9 1.4-1.4-1.4 1.4-1.9a7.4 7.4 0 0 1-.8-1.9l-2.3-.4v-2l2.3-.4c.17-.66.44-1.3.8-1.9L5.4 5.6 6.8 4.2l1.9 1.4c.6-.36 1.24-.63 1.9-.8ZM12 9.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8Z',
+  fire:'M12 2.5s5.5 4.6 5.5 9.3a5.5 5.5 0 0 1-11 0c0-1.6.7-3 1.6-4.2.3 1.3 1.1 2.2 2.1 2.2 1.6 0 2.2-1.6 1.8-7.3ZM12 21a2.6 2.6 0 0 0 2.6-2.6c0-1.6-2.6-3.7-2.6-3.7s-2.6 2.1-2.6 3.7A2.6 2.6 0 0 0 12 21Z',
+  shield:'M12 2.8 20 6v6c0 4.6-3.3 7.7-8 9.2C7.3 19.7 4 16.6 4 12V6l8-3.2ZM12 8.6v4M12 15.2v.1',
+  paint:'M5 3h11a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5ZM12 10v3.5a1.5 1.5 0 0 1-1.5 1.5H10a1.5 1.5 0 0 0-1.5 1.5V21h4v-4.5',
+  net:'M12 20.5v-4M8.4 16.5h7.2M4 4.5h16v8H4ZM8 8.5h8M12 12.5v4',
+  door:'M5 21V4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v17M4 21h16M13 12.3v.1',
+  glass:'M4 4h16v16H4ZM4 4l16 16M20 4 4 20',
+  garden:'M12 21v-7M12 14c0-3.3 2.4-6 5.5-6 0 3.3-2.4 6-5.5 6ZM12 14c0-3.3-2.4-6-5.5-6 0 3.3 2.4 6 5.5 6ZM12 9c0-2.6 1-5 1-5s1 2.4 1 5a1.9 1.9 0 0 1-2 0Z',
+  pest:'M12 7.5a4.5 4.5 0 0 1 4.5 4.5v3a4.5 4.5 0 0 1-9 0v-3A4.5 4.5 0 0 1 12 7.5ZM12 7.5V5M9.5 4 12 5l2.5-1M7.5 11H4M7.5 15H4.5M16.5 11H20M16.5 15h3M7 18.5l-2 2M17 18.5l2 2',
+  car:'M5.5 16.5h13M4 16.5v2.2M20 16.5v2.2M6.5 16.5a1.6 1.6 0 1 1-3.2 0 1.6 1.6 0 0 1 3.2 0ZM20.7 16.5a1.6 1.6 0 1 1-3.2 0 1.6 1.6 0 0 1 3.2 0ZM3.5 12.5h17l-1.4-4.1A2 2 0 0 0 17.2 7H6.8a2 2 0 0 0-1.9 1.4Z'
+};
+const ICON_ORDER = Object.keys(ICONS);
 
-const telOf = (l) => (lines[l.id] || l.tel || '').trim();
+const COLORS = {
+  navy:  { tint:'#E8EDFB', ink:'#2E3C96', name:'كحلي' },
+  amber: { tint:'#FCF0DC', ink:'#B86F14', name:'كهرماني' },
+  green: { tint:'#E4F5EF', ink:'#12805F', name:'أخضر' },
+  red:   { tint:'#FBE7EA', ink:'#C0304A', name:'أحمر' },
+  wood:  { tint:'#F3EEE6', ink:'#8A6A38', name:'بني' },
+  grey:  { tint:'#EFF1F8', ink:'#6B7492', name:'رمادي' },
+  teal:  { tint:'#E2F3F6', ink:'#15707F', name:'تركواز' },
+  plum:  { tint:'#F0EAF8', ink:'#6A46A8', name:'بنفسجي' }
+};
+const COLOR_ORDER = Object.keys(COLORS);
+
+const svg = (d, w) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w || 1.7}" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+const iconOf  = (s) => ICONS[s && s.icon] || ICONS.gear;
+const colorOf = (s) => COLORS[s && s.color] || COLORS.grey;
+
+/* the fixed path every request walks, from the letter:
+   استلام ← إسناد بأمر شغل ← تنفيذ ← إصلاح ← غلق */
+const STAGES = [
+  { t:'تم استلام الطلب',     s:'سُجِّل الطلب لدى إدارة الصيانة' },
+  { t:'إسناد لفني بأمر شغل', s:'يصدر أمر شغل رسمي معتمد من الشركة' },
+  { t:'جاري التنفيذ',        s:'الفني في الموقع' },
+  { t:'تم الإصلاح',          s:'انتهاء أعمال الصيانة' },
+  { t:'غلق الطلب',           s:'بعد تأكيد الساكن' }
+];
+
+/* ══════════ state ══════════ */
+let CFG        = null;                       // live config (remote ⊕ admin draft)
+let REMOTE     = null;                       // exactly what config.json said
+let requests   = store.get('requests', []);
+let profile    = store.get('profile', {});
+let draft      = { svc:'', prio:'', shots:[] };
+let listFilter = 'all';
+let isAdmin    = sessionStorage.getItem('nawah.admin') === '1';
+
+const svcById = (id) => (CFG.services.find((s) => s.id === id)) || CFG.services[CFG.services.length - 1] || { name:'خدمة', icon:'gear', color:'grey' };
+const telOf   = (l) => String(l.tel || '').trim();
+
+/* ══════════ config loading ══════════
+   config.json is the source of truth for everyone.
+   The admin's unpublished edits live in localStorage until exported. */
+async function loadConfig() {
+  let remote = null;
+  try {
+    const res = await fetch('config.json?v=' + Date.now(), { cache: 'no-store' });
+    if (res.ok) remote = await res.json();
+  } catch (e) { /* offline — fall back to whatever we cached */ }
+
+  if (!remote) remote = store.get('cfgCache', null);
+  if (!remote) { fatal('تعذّر تحميل إعدادات التطبيق (config.json).'); return false; }
+
+  store.set('cfgCache', remote);
+  REMOTE = remote;
+
+  const localDraft = store.get('cfgDraft', null);
+  CFG = localDraft ? deepMerge(clone(remote), localDraft) : clone(remote);
+  return true;
+}
+
+const clone = (o) => JSON.parse(JSON.stringify(o));
+function deepMerge(base, over) {
+  Object.keys(over).forEach((k) => {
+    if (Array.isArray(over[k]) || typeof over[k] !== 'object' || over[k] === null) base[k] = over[k];
+    else base[k] = deepMerge(base[k] || {}, over[k]);
+  });
+  return base;
+}
+function saveDraft() {
+  store.set('cfgDraft', CFG);
+  $('#pubDot') && ($('#pubDot').hidden = false);
+}
+const hasDraft = () => !!store.get('cfgDraft', null);
+
+function fatal(msg) {
+  document.body.innerHTML = `<div class="lockwrap"><div class="lockbox">
+    <h1>تعذّر تشغيل التطبيق</h1><p>${esc(msg)}</p></div></div>`;
+}
+
+/* ══════════ lock screen ══════════ */
+function renderLock() {
+  $('#lockScreen').hidden = false;
+  $('.shell').hidden = true;
+  $('#lockTitle').textContent = CFG.lockTitle || 'الموقع مغلق مؤقتاً';
+  $('#lockMsg').textContent   = CFG.lockMessage || '';
+}
 
 /* ══════════ navigation ══════════ */
-const VIEWS = ['home', 'new', 'list', 'detail', 'emergency', 'settings'];
+const VIEWS = ['home', 'new', 'list', 'detail', 'emergency', 'settings', 'admin'];
 
 function go(name, arg) {
+  if (name === 'admin' && !isAdmin) { askPassword(); return; }
   VIEWS.forEach((v) => { const el = $('#v-' + v); if (el) el.hidden = (v !== name); });
   $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.go === name));
   window.scrollTo(0, 0);
@@ -108,45 +153,35 @@ function go(name, arg) {
   if (name === 'detail')    renderDetail(arg);
   if (name === 'emergency') renderEmergency();
   if (name === 'settings')  renderSettings();
+  if (name === 'admin')     renderAdmin();
   if (name === 'home')      renderCounters();
 
-  // re-trigger the entrance animation
   const v = $('#v-' + name);
   if (v) { v.style.animation = 'none'; void v.offsetWidth; v.style.animation = ''; }
 }
 
-document.addEventListener('click', (e) => {
-  const g = e.target.closest('[data-go]');
-  if (g) { go(g.dataset.go); return; }
-  const c = e.target.closest('[data-close]');
-  if (c) { const w = c.closest('.sheet-wrap'); if (w) w.hidden = true; }
-});
-
 /* ══════════ home ══════════ */
+function renderBrand() {
+  $('#bCompany').textContent = CFG.brand.company;
+  $('#bTagline').textContent = CFG.brand.tagline;
+  $('#heroTitle').textContent = CFG.brand.heroTitle;
+  $('#heroLede').textContent  = CFG.brand.heroLede;
+  $('#hRoutine').textContent      = CFG.hours.routine;
+  $('#hRoutineNote').textContent  = CFG.hours.routineNote;
+  $('#hEmergency').firstChild.nodeValue = CFG.hours.emergency;
+  $('#hEmergencyNote').textContent = CFG.hours.emergencyNote;
+  document.title = CFG.brand.company + ' — خدمات الضبعة';
+}
+
 function renderServices() {
-  $('#svcGrid').innerHTML = SVC.map((s) => `
-    <button class="svc" type="button" data-svc="${s.id}">
-      <span class="ic" style="background:${s.tint};color:${s.ink}">${svg(s.d)}</span>
-      <b>${esc(s.name)}</b>
-    </button>`).join('');
-
-  $('#pickSvc').innerHTML = SVC.map((s) => `
-    <button class="pick" type="button" role="radio" aria-checked="false" data-svc="${s.id}">
-      <span class="ic" style="background:${s.tint};color:${s.ink}">${svg(s.d)}</span>
-      <b>${esc(s.name)}</b>
-    </button>`).join('');
-
-  $('#svcGrid').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-svc]');
-    if (!b) return;
-    pickSvc(b.dataset.svc);
-    go('new');
-  });
-
-  $('#pickSvc').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-svc]');
-    if (b) pickSvc(b.dataset.svc);
-  });
+  const tile = (s, cls, extra) => {
+    const c = colorOf(s);
+    return `<button class="${cls}" type="button" ${extra || ''} data-svc="${esc(s.id)}">
+      <span class="ic" style="background:${c.tint};color:${c.ink}">${svg(iconOf(s))}</span>
+      <b>${esc(s.name)}</b></button>`;
+  };
+  $('#svcGrid').innerHTML = CFG.services.map((s) => tile(s, 'svc')).join('');
+  $('#pickSvc').innerHTML = CFG.services.map((s) => tile(s, 'pick', 'role="radio" aria-checked="false"')).join('');
 }
 
 function pickSvc(id) {
@@ -165,39 +200,45 @@ function renderCounters() {
   $('#tabDot').hidden = requests.length === 0;
 }
 
-/* ══════════ new request ══════════ */
-$('#pickPrio').addEventListener('click', (e) => {
-  const b = e.target.closest('.prio-op');
-  if (!b) return;
-  draft.prio = b.dataset.v;
-  $$('#pickPrio .prio-op').forEach((p) => p.setAttribute('aria-checked', String(p === b)));
-  $('#errPrio').hidden = true;
-});
+function renderSelects() {
+  $('#fArea').innerHTML = '<option value="">اختر…</option>' +
+    CFG.areas.map((a) => `<option>${esc(a)}</option>`).join('');
+  $('#fSpot').innerHTML = '<option value="">اختر…</option>' +
+    CFG.spots.map((a) => `<option>${esc(a)}</option>`).join('');
+  $('#pickPrio').innerHTML = ['normal', 'high', 'urgent'].map((k) => {
+    const p = CFG.priorities[k];
+    return `<button type="button" class="prio-op" data-v="${k}" aria-checked="false">
+      <b>${esc(p.label)}</b><span>${esc(p.desc)}</span><i>${esc(p.short)}</i></button>`;
+  }).join('');
+}
 
-/* photos: downscale in a canvas so localStorage stays small */
-$('#fShots').addEventListener('change', (e) => {
-  const files = Array.from(e.target.files || []).slice(0, 3 - draft.shots.length);
-  files.forEach((f) => {
-    if (!f.type.startsWith('image/')) return;
-    const fr = new FileReader();
-    fr.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const max = 900;
-        const sc = Math.min(1, max / Math.max(img.width, img.height));
-        const cv = document.createElement('canvas');
-        cv.width = Math.round(img.width * sc);
-        cv.height = Math.round(img.height * sc);
-        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-        draft.shots.push(cv.toDataURL('image/jpeg', 0.62));
-        renderShots();
+/* ══════════ new request ══════════ */
+function initForm() {
+  $('#fShots').addEventListener('change', (e) => {
+    const files = Array.from(e.target.files || []).slice(0, 3 - draft.shots.length);
+    files.forEach((f) => {
+      if (!f.type.startsWith('image/')) return;
+      const fr = new FileReader();
+      fr.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const sc = Math.min(1, 900 / Math.max(img.width, img.height));
+          const cv = document.createElement('canvas');
+          cv.width = Math.round(img.width * sc);
+          cv.height = Math.round(img.height * sc);
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+          draft.shots.push(cv.toDataURL('image/jpeg', 0.62));
+          renderShots();
+        };
+        img.src = fr.result;
       };
-      img.src = fr.result;
-    };
-    fr.readAsDataURL(f);
+      fr.readAsDataURL(f);
+    });
+    e.target.value = '';
   });
-  e.target.value = '';
-});
+
+  $('#reqForm').addEventListener('submit', onSubmit);
+}
 
 function renderShots() {
   $('#shotList').innerHTML = draft.shots.map((s, i) => `
@@ -205,87 +246,124 @@ function renderShots() {
       <button type="button" data-rm="${i}" aria-label="حذف الصورة">&times;</button></div>`).join('');
 }
 
-$('#shotList').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-rm]');
-  if (!b) return;
-  draft.shots.splice(Number(b.dataset.rm), 1);
-  renderShots();
-});
-
-$('#reqForm').addEventListener('submit', (e) => {
+function onSubmit(e) {
   e.preventDefault();
-
   const area  = $('#fArea').value.trim();
   const block = $('#fBlock').value.trim();
   const flat  = $('#fFlat').value.trim();
   const phone = $('#fPhone').value.replace(/\D/g, '');
 
-  let bad = null;
   $('#errSvc').hidden   = !!draft.svc;
-  $('#errPrio').hidden  = !!draft.prio;
   $('#errLoc').hidden   = !!(area && block && flat);
+  $('#errPrio').hidden  = !!draft.prio;
   $('#errPhone').hidden = phone.length === 11;
 
-  if (!draft.svc)  bad = bad || '#errSvc';
-  if (!(area && block && flat)) bad = bad || '#errLoc';
-  if (!draft.prio) bad = bad || '#errPrio';
-  if (phone.length !== 11) bad = bad || '#errPhone';
+  let bad = null;
+  if (!draft.svc) bad = '#errSvc';
+  else if (!(area && block && flat)) bad = '#errLoc';
+  else if (!draft.prio) bad = '#errPrio';
+  else if (phone.length !== 11) bad = '#errPhone';
 
   if (bad) {
-    $(bad).closest('.step').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $(bad).closest('.step').scrollIntoView({ behavior:'smooth', block:'center' });
     toast('أكمل البيانات الناقصة');
     return;
   }
 
   const now = new Date();
   const seq = requests.length + 1;
-  const no = 'NW-' + String(now.getDate()).padStart(2, '0')
-                   + String(now.getMonth() + 1).padStart(2, '0')
-                   + '-' + String(seq).padStart(4, '0');
+  const no = 'NW-' + String(now.getDate()).padStart(2,'0') + String(now.getMonth()+1).padStart(2,'0')
+           + '-' + String(seq).padStart(4,'0');
 
-  const req = {
-    no, svc: draft.svc, prio: draft.prio,
-    area, block, flat,
-    floor: $('#fFloor').value.trim(),
-    spot:  $('#fSpot').value.trim(),
-    desc:  $('#fDesc').value.trim(),
-    phone, shots: draft.shots.slice(),
-    stage: 0,
-    wo: 'WO-' + now.getFullYear() + '-' + String(1000 + seq),
-    at: now.toISOString()
-  };
-
-  requests.unshift(req);
+  requests.unshift({
+    no, svc:draft.svc, prio:draft.prio, area, block, flat,
+    floor:$('#fFloor').value.trim(), spot:$('#fSpot').value.trim(),
+    desc:$('#fDesc').value.trim(), phone, shots:draft.shots.slice(),
+    stage:0, wo:'WO-' + now.getFullYear() + '-' + String(1000 + seq), at:now.toISOString()
+  });
   if (!store.set('requests', requests)) { requests.shift(); return; }
 
-  /* remember the resident so the next request is one tap shorter */
   profile = Object.assign({}, profile, { phone, block, flat, area });
   store.set('profile', profile);
 
+  const p = CFG.priorities[draft.prio];
+  const saved = requests[0];
   $('#doneNo').textContent = no;
-  $('#doneSla').textContent = 'الأولوية: ' + PRIO[req.prio].label + ' — الاستجابة المستهدفة ' + PRIO[req.prio].sla;
+  $('#doneSla').textContent = 'الأولوية: ' + p.label + ' — الاستجابة المستهدفة ' + p.sla;
   $('#doneSheet').hidden = false;
   $('#btnDoneTrack').onclick = () => { $('#doneSheet').hidden = true; go('detail', no); };
+  wireSend(saved);
 
   e.target.reset();
-  draft = { svc: '', prio: '', shots: [] };
-  $$('#pickSvc .pick').forEach((p) => p.setAttribute('aria-checked', 'false'));
-  $$('#pickPrio .prio-op').forEach((p) => p.setAttribute('aria-checked', 'false'));
+  draft = { svc:'', prio:'', shots:[] };
+  $$('#pickSvc .pick').forEach((p2) => p2.setAttribute('aria-checked','false'));
+  $$('#pickPrio .prio-op').forEach((p2) => p2.setAttribute('aria-checked','false'));
   renderShots();
   renderCounters();
-});
+  renderSelects();
+}
+
+/* ══════════ sending the request to the company ══════════
+   No server yet, so the resident hands the request over on WhatsApp
+   in one tap. Swap this for an API call when the backend is ready. */
+function requestText(r) {
+  const s = svcById(r.svc), p = CFG.priorities[r.prio] || CFG.priorities.normal;
+  const d = new Date(r.at);
+  return [
+    '*طلب صيانة — ' + CFG.brand.company + '*',
+    '',
+    'رقم الطلب: ' + r.no,
+    'أمر الشغل: ' + r.wo,
+    'الخدمة: ' + s.name,
+    'الأولوية: ' + p.label + ' (' + p.sla + ')',
+    '',
+    'الموقع: ' + r.area + ' — عمارة ' + r.block + (r.floor ? ' / دور ' + r.floor : '') + ' / شقة ' + r.flat,
+    (r.spot ? 'مكان العطل: ' + r.spot : ''),
+    '',
+    'الوصف: ' + (r.desc || '—'),
+    'للتواصل: ' + r.phone,
+    '',
+    'التاريخ: ' + d.toLocaleString('ar-EG')
+  ].filter((x) => x !== '').join(String.fromCharCode(10));
+}
+
+function wireSend(r) {
+  const wa = String((CFG.intake && CFG.intake.whatsapp) || '').replace(/\D/g, '');
+  const btn = $('#btnWa');
+  const txt = requestText(r);
+
+  if (wa) {
+    btn.hidden = false;
+    btn.onclick = () => {
+      window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(txt), '_blank', 'noopener');
+      $('#doneSheet').hidden = true;
+      toast('افتح واتساب واضغط إرسال');
+    };
+    $('.send-hint').textContent = 'خطوة أخيرة — ابعت الطلب لإدارة الصيانة:';
+  } else {
+    btn.hidden = true;
+    $('.send-hint').textContent = 'رقم واتساب الإدارة لم يُضف بعد — انسخ نص الطلب وابعته للإدارة.';
+  }
+
+  if (r.shots && r.shots.length) {
+    $('.send-hint').textContent += ' (ابعت الصور بعدها من الاستوديو)';
+  }
+
+  $('#btnCopyReq').onclick = async () => {
+    try { await navigator.clipboard.writeText(txt); toast('تم نسخ نص الطلب'); }
+    catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.style.cssText = 'position:fixed;top:-2000px';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast('تم النسخ'); } catch (e2) { toast('تعذّر النسخ'); }
+      ta.remove();
+    }
+  };
+}
 
 /* ══════════ my requests ══════════ */
-$('#filters').addEventListener('click', (e) => {
-  const c = e.target.closest('.chip');
-  if (!c) return;
-  listFilter = c.dataset.f;
-  $$('#filters .chip').forEach((x) => x.classList.toggle('on', x === c));
-  renderList();
-});
-
 function stageChip(stage) {
-  if (stage >= 3) return '<span class="st st-done">تم الإصلاح</span>';
+  if (stage >= 3)  return '<span class="st st-done">تم الإصلاح</span>';
   if (stage === 2) return '<span class="st st-work">جاري التنفيذ</span>';
   return '<span class="st st-new">قيد المراجعة</span>';
 }
@@ -295,41 +373,32 @@ function renderList() {
     listFilter === 'all' ? true : listFilter === 'open' ? r.stage < 3 : r.stage >= 3);
 
   if (!rows.length) {
-    $('#reqList').innerHTML = `
-      <div class="empty">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 3H7a1.6 1.6 0 0 0-1.6 1.6v14.8A1.6 1.6 0 0 0 7 21h10a1.6 1.6 0 0 0 1.6-1.6V7.6Z"/>
-          <path d="M14 3v4.6h4.6M9 13h6M9 16.6h4"/>
-        </svg>
-        <b>${requests.length ? 'لا توجد طلبات في هذا التصنيف' : 'لا توجد طلبات بعد'}</b>
-        <p>${requests.length ? 'جرّب تصنيفاً آخر.' : 'سجّل أول عطل وسيصلك رقم الطلب فوراً مع متابعة كل خطوة.'}</p>
-        ${requests.length ? '' : '<button class="btn btn-primary" data-go="new" type="button">طلب صيانة جديد</button>'}
-      </div>`;
+    $('#reqList').innerHTML = `<div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 3H7a1.6 1.6 0 0 0-1.6 1.6v14.8A1.6 1.6 0 0 0 7 21h10a1.6 1.6 0 0 0 1.6-1.6V7.6Z"/>
+        <path d="M14 3v4.6h4.6M9 13h6M9 16.6h4"/></svg>
+      <b>${requests.length ? 'لا توجد طلبات في هذا التصنيف' : 'لا توجد طلبات بعد'}</b>
+      <p>${requests.length ? 'جرّب تصنيفاً آخر.' : 'سجّل أول عطل وسيصلك رقم الطلب فوراً مع متابعة كل خطوة.'}</p>
+      ${requests.length ? '' : '<button class="btn btn-primary" data-go="new" type="button">طلب صيانة جديد</button>'}
+    </div>`;
     return;
   }
 
   $('#reqList').innerHTML = rows.map((r) => {
-    const s = svcById(r.svc);
-    const d = new Date(r.at);
-    return `<button class="req" type="button" data-no="${esc(r.no)}" data-p="${r.prio}">
-      <span class="ic" style="background:${s.tint};color:${s.ink}">${svg(s.d)}</span>
+    const s = svcById(r.svc), c = colorOf(s), d = new Date(r.at);
+    return `<button class="req" type="button" data-no="${esc(r.no)}" data-p="${esc(r.prio)}">
+      <span class="ic" style="background:${c.tint};color:${c.ink}">${svg(iconOf(s))}</span>
       <span class="t">${esc(s.name)} — عمارة ${AR(esc(r.block))} / شقة ${AR(esc(r.flat))}</span>
-      <span class="s">${esc(r.no)} · ${AR(d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' }))}</span>
-      ${stageChip(r.stage)}
-    </button>`;
+      <span class="s">${esc(r.no)} · ${AR(d.toLocaleDateString('ar-EG',{day:'numeric',month:'long'}))}</span>
+      ${stageChip(r.stage)}</button>`;
   }).join('');
-
-  $$('#reqList .req').forEach((b) => {
-    b.addEventListener('click', () => go('detail', b.dataset.no));
-  });
 }
 
 /* ══════════ detail ══════════ */
 function renderDetail(no) {
   const r = requests.find((x) => x.no === no) || requests[0];
   if (!r) { go('list'); return; }
-  const s = svcById(r.svc);
-  const d = new Date(r.at);
+  const s = svcById(r.svc), d = new Date(r.at), p = CFG.priorities[r.prio] || CFG.priorities.normal;
 
   const timeline = STAGES.map((st, i) => {
     const cls = i < r.stage ? 'done' : i === r.stage ? 'now' : '';
@@ -337,11 +406,9 @@ function renderDetail(no) {
       ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 5 5L19 7"/></svg>'
       : '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>';
     return `<li class="tl ${cls}">
-      <span class="node">${tick}</span>
-      <b>${esc(st.t)}</b>
-      ${i < STAGES.length - 1 ? '<span class="rail"></span>' : '<span></span>'}
-      <span>${i === r.stage ? esc(st.s) + ' — الاستجابة المستهدفة ' + PRIO[r.prio].sla : esc(st.s)}</span>
-    </li>`;
+      <span class="node">${tick}</span><b>${esc(st.t)}</b>
+      ${i < STAGES.length - 1 ? '<span class="rail"></span>' : '<span class="rail" style="visibility:hidden"></span>'}
+      <span>${i === r.stage ? esc(st.s) + ' — الاستجابة المستهدفة ' + esc(p.sla) : esc(st.s)}</span></li>`;
   }).join('');
 
   $('#detail').innerHTML = `
@@ -349,59 +416,54 @@ function renderDetail(no) {
       <div class="d-no">${esc(r.no)}</div>
       <h3>${esc(s.name)}</h3>
       <div class="d-meta">
-        <span class="d-pill ${r.prio}">${esc(PRIO[r.prio].label)}</span>
-        <span class="d-pill">${esc(PRIO[r.prio].sla)}</span>
-        <span class="d-pill">${AR(d.toLocaleDateString('ar-EG', { day:'numeric', month:'long', year:'numeric' }))}</span>
+        <span class="d-pill ${esc(r.prio)}">${esc(p.label)}</span>
+        <span class="d-pill">${esc(p.sla)}</span>
+        <span class="d-pill">${AR(d.toLocaleDateString('ar-EG',{day:'numeric',month:'long',year:'numeric'}))}</span>
       </div>
     </div>
-
-    <section class="card">
-      <h3>متابعة الحالة</h3>
-      <ul class="timeline">${timeline}</ul>
-    </section>
-
-    <section class="card">
-      <h3>بيانات الطلب</h3>
+    <section class="card"><h3>متابعة الحالة</h3><ul class="timeline">${timeline}</ul></section>
+    <section class="card"><h3>بيانات الطلب</h3>
       <dl class="kv">
         <dt>الموقع</dt><dd>${esc(r.area)} — عمارة ${AR(esc(r.block))}${r.floor ? ' / الدور ' + AR(esc(r.floor)) : ''} / شقة ${AR(esc(r.flat))}</dd>
         ${r.spot ? `<dt>مكان العطل</dt><dd>${esc(r.spot)}</dd>` : ''}
-        <dt>أمر الشغل</dt><dd style="direction:ltr;text-align:start">${esc(r.wo)}</dd>
+        <dt>أمر الشغل</dt><dd class="ltr">${esc(r.wo)}</dd>
         <dt>للتواصل</dt><dd><a href="tel:${esc(r.phone)}">${AR(esc(r.phone))}</a></dd>
       </dl>
-      ${r.desc ? `<p style="margin-top:12px;color:var(--ink)">${esc(r.desc)}</p>` : ''}
-      ${r.shots && r.shots.length
-        ? `<div class="d-shots" style="margin-top:12px">${r.shots.map((x, i) => `<img src="${x}" alt="صورة العطل ${AR(i + 1)}">`).join('')}</div>`
-        : ''}
+      ${r.desc ? `<p class="desc">${esc(r.desc)}</p>` : ''}
+      ${r.shots && r.shots.length ? `<div class="d-shots">${r.shots.map((x,i)=>`<img src="${x}" alt="صورة العطل ${AR(i+1)}">`).join('')}</div>` : ''}
     </section>
-
-    <section class="card">
-      <h3>تنبيه</h3>
+    <section class="card"><h3>إرسال / متابعة مع الإدارة</h3>
+      <p>لو لسه مبعتّش الطلب للإدارة، أو عايز تسأل عن حالته:</p>
+      <button class="btn btn-wa btn-block" type="button" data-resend="${esc(r.no)}">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2Zm5.8 14.2c-.24.68-1.4 1.3-1.94 1.35-.5.05-1.12.07-1.8-.11a16.4 16.4 0 0 1-1.63-.6c-2.87-1.24-4.74-4.13-4.88-4.32-.14-.2-1.17-1.55-1.17-2.96 0-1.4.74-2.09 1-2.38.26-.29.57-.36.76-.36l.54.01c.18.01.41-.07.64.49l.88 2.13c.07.15.12.32.02.51l-.3.45-.44.48c-.14.14-.29.3-.12.58.16.29.73 1.2 1.56 1.94 1.07.96 1.98 1.25 2.26 1.4.28.14.44.12.6-.07l.86-1c.2-.24.37-.19.62-.1l2.03.96c.25.12.42.18.48.28.06.1.06.58-.18 1.26Z"/></svg>
+        إرسال على واتساب
+      </button>
+    </section>
+    <section class="card"><h3>تنبيه</h3>
       <p>لا تسمح لأي فني بمباشرة العمل قبل التأكد من بطاقة التعريف الشخصية والزي الموحد وأمر الشغل المعتمد. رقم أمر الشغل الخاص بطلبك موضّح بالأعلى.</p>
     </section>`;
 }
 
 /* ══════════ emergency ══════════ */
 function renderEmergency() {
-  $('#emgList').innerHTML = CONFIG.lines.map((l) => {
+  const pick = { hot:'gear', power:'bolt', water:'plumb', sewer:'sewer', fire:'fire', guard:'shield' };
+  $('#emgList').innerHTML = CFG.lines.map((l) => {
     const tel = telOf(l);
-    const EXTRA = {
-      fire:  { tint:'#FBE7EA', ink:'#C0304A',
-               d:'M12 2.5s5.5 4.6 5.5 9.3a5.5 5.5 0 0 1-11 0c0-1.6.7-3 1.6-4.2.3 1.3 1.1 2.2 2.1 2.2 1.6 0 2.2-1.6 1.8-7.3ZM12 21a2.6 2.6 0 0 0 2.6-2.6c0-1.6-2.6-3.7-2.6-3.7s-2.6 2.1-2.6 3.7A2.6 2.6 0 0 0 12 21Z' },
-      guard: { tint:'#E8EDFB', ink:'#2E3C96',
-               d:'M12 2.8 20 6v6c0 4.6-3.3 7.7-8 9.2C7.3 19.7 4 16.6 4 12V6l8-3.2ZM12 8.6v4M12 15.2v.1' }
-    };
-    const s = EXTRA[l.id] || svcById(l.id === 'power' ? 'elec' : l.id === 'water' ? 'plumb' : l.id);
+    const c = COLORS[l.hot ? 'navy' : (l.id === 'fire' ? 'red' : l.id === 'power' ? 'amber' : 'navy')];
     const icon = l.hot
       ? svg('M15.5 14.9a2 2 0 0 1 2.1-.45l2.3.9A2 2 0 0 1 21 17.3v1.9a2 2 0 0 1-2.2 2A17.6 17.6 0 0 1 3 5.2 2 2 0 0 1 5 3h1.9a2 2 0 0 1 2 1.6l.5 2.4a2 2 0 0 1-.6 1.9l-1 1a14 14 0 0 0 5.4 5.4l1-1Z')
-      : svg(s.d);
-    const body = `
-      <span class="ic" style="${l.hot ? '' : `background:${s.tint};color:${s.ink}`}">${icon}</span>
+      : svg(ICONS[pick[l.id]] || ICONS.gear);
+    const body = `<span class="ic" style="${l.hot ? '' : `background:${c.tint};color:${c.ink}`}">${icon}</span>
       <span class="tx"><b>${esc(l.name)}</b><span>${esc(l.desc)}</span></span>
       <span class="no">${tel ? AR(esc(tel)) : 'لم يُضف بعد'}</span>`;
-    return tel
-      ? `<a class="emg ${l.hot ? 'hot' : ''}" href="tel:${esc(tel)}">${body}</a>`
-      : `<div class="emg unset ${l.hot ? 'hot' : ''}">${body}</div>`;
+    return tel ? `<a class="emg ${l.hot ? 'hot' : ''}" href="tel:${esc(tel)}">${body}</a>`
+               : `<div class="emg unset ${l.hot ? 'hot' : ''}">${body}</div>`;
   }).join('');
+
+  const a = CFG.authority;
+  $('#authCard').innerHTML = `<h3>${esc(a.name)}</h3>
+    <dl class="kv">${a.rows.map((r) => `<dt>${esc(r.k)}</dt><dd class="ltr">${AR(esc(r.v))}</dd>`).join('')}</dl>
+    <p class="fine">${esc(a.address)}</p>`;
 }
 
 /* ══════════ settings ══════════ */
@@ -410,46 +472,10 @@ function renderSettings() {
   $('#sPhone').value = profile.phone || '';
   $('#sBlock').value = profile.block || '';
   $('#sFlat').value  = profile.flat  || '';
-
-  $('#adminLines').innerHTML = CONFIG.lines.map((l) => `
-    <div class="adm">
-      <label for="ln-${l.id}">${esc(l.name)}</label>
-      <input id="ln-${l.id}" data-line="${l.id}" inputmode="tel"
-             placeholder="${esc(l.tel || 'أدخل الرقم')}" value="${esc(lines[l.id] || '')}">
-    </div>`).join('');
-
-  $$('#adminLines input').forEach((inp) => {
-    inp.addEventListener('change', () => {
-      const v = inp.value.trim();
-      if (v) lines[inp.dataset.line] = v; else delete lines[inp.dataset.line];
-      store.set('lines', lines);
-      toast('تم حفظ الرقم');
-    });
-  });
-
   $('#installState').textContent = isStandalone() ? 'مثبّت بالفعل' : 'متاح';
+  $('#adminRow').textContent = isAdmin ? 'مفتوحة' : 'تحتاج كلمة مرور';
 }
 
-['sName', 'sPhone', 'sBlock', 'sFlat'].forEach((id) => {
-  $('#' + id).addEventListener('change', (e) => {
-    profile[id.slice(1).toLowerCase()] = e.target.value.trim();
-    store.set('profile', profile);
-    toast('تم الحفظ');
-  });
-});
-
-$('#btnClear').addEventListener('click', () => {
-  if (!requests.length) { toast('لا توجد طلبات'); return; }
-  if (!confirm('سيتم مسح كل الطلبات المحفوظة على هذا الجهاز. متابعة؟')) return;
-  requests = [];
-  store.set('requests', requests);
-  renderCounters(); renderList();
-  toast('تم مسح الطلبات');
-});
-
-$('#btnSettings').addEventListener('click', () => go('settings'));
-
-/* prefill the form from the saved profile */
 function prefill() {
   if (profile.phone && !$('#fPhone').value) $('#fPhone').value = profile.phone;
   if (profile.block && !$('#fBlock').value) $('#fBlock').value = profile.block;
@@ -457,14 +483,318 @@ function prefill() {
   if (profile.area  && !$('#fArea').value)  $('#fArea').value  = profile.area;
 }
 
-/* ══════════ install (PWA) ══════════
-   Android/Chrome  → beforeinstallprompt
-   iOS Safari      → no API; show the Share → Add to Home Screen sheet
-   already added   → hide the banner                                */
+/* ══════════ admin ══════════ */
+function askPassword() {
+  $('#passSheet').hidden = false;
+  const inp = $('#passInput');
+  inp.value = '';
+  setTimeout(() => inp.focus(), 250);
+}
 
+function tryPassword() {
+  if ($('#passInput').value.trim() !== ADMIN_PASS) {
+    $('#passErr').hidden = false;
+    $('#passInput').value = '';
+    return;
+  }
+  isAdmin = true;
+  sessionStorage.setItem('nawah.admin', '1');
+  $('#passErr').hidden = true;
+  $('#passSheet').hidden = true;
+  $('#lockScreen').hidden = true;
+  $('.shell').hidden = false;
+  $('#adminTab').hidden = false;
+  document.body.classList.add('is-admin');
+  go('admin');
+  toast('أهلاً — لوحة الإدارة مفتوحة');
+}
+
+let adminTab = 'services';
+
+function renderAdmin() {
+  $('#pubDot').hidden = !hasDraft();
+  $$('#admTabs .chip').forEach((c) => c.classList.toggle('on', c.dataset.t === adminTab));
+  const box = $('#admBody');
+  if (adminTab === 'services')  box.innerHTML = admServices();
+  if (adminTab === 'lines')     box.innerHTML = admLines();
+  if (adminTab === 'content')   box.innerHTML = admContent();
+  if (adminTab === 'lock')      box.innerHTML = admLock();
+  if (adminTab === 'publish')   box.innerHTML = admPublish();
+}
+
+function admServices() {
+  return `<p class="fine mb">اسحب لإعادة الترتيب غير متاح — استخدم أسهم ↑ ↓. أي خدمة تضيفها تظهر فوراً في الصفحة الرئيسية وفي نموذج الطلب.</p>
+  <div class="adm-list">
+    ${CFG.services.map((s, i) => {
+      const c = colorOf(s);
+      return `<div class="adm-item" data-i="${i}">
+        <span class="ic" style="background:${c.tint};color:${c.ink}">${svg(iconOf(s))}</span>
+        <input class="adm-name" value="${esc(s.name)}" data-k="name" data-i="${i}" aria-label="اسم الخدمة">
+        <div class="adm-ops">
+          <button type="button" data-act="up"   data-i="${i}" aria-label="لأعلى">↑</button>
+          <button type="button" data-act="down" data-i="${i}" aria-label="لأسفل">↓</button>
+          <button type="button" data-act="edit" data-i="${i}" aria-label="الأيقونة واللون">🎨</button>
+          <button type="button" data-act="del"  data-i="${i}" class="dl" aria-label="حذف">✕</button>
+        </div>
+        <div class="adm-edit" data-edit="${i}" hidden>
+          <div class="pal">${ICON_ORDER.map((k) => `<button type="button" class="pal-i ${s.icon===k?'on':''}" data-seticon="${k}" data-i="${i}">${svg(ICONS[k])}</button>`).join('')}</div>
+          <div class="pal cols">${COLOR_ORDER.map((k) => `<button type="button" class="pal-c ${s.color===k?'on':''}" data-setcolor="${k}" data-i="${i}" style="background:${COLORS[k].tint};border-color:${COLORS[k].ink}"><i style="background:${COLORS[k].ink}"></i></button>`).join('')}</div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+  <button class="btn btn-quiet btn-block mt" type="button" data-act="addsvc">+ إضافة خدمة جديدة</button>`;
+}
+
+function admLines() {
+  return `<p class="fine mb">الأرقام دي هي اللي بتظهر في شاشة الطوارئ. سيبها فاضية لو لسه مش متاحة.</p>
+  <div class="adm-list">
+    ${CFG.lines.map((l, i) => `<div class="adm-item line">
+      <input class="adm-name" value="${esc(l.name)}" data-lk="name" data-i="${i}" aria-label="اسم الخط">
+      <input class="adm-tel ltr" value="${esc(l.tel)}" data-lk="tel" data-i="${i}" inputmode="tel" placeholder="الرقم" aria-label="الرقم">
+      <input class="adm-desc" value="${esc(l.desc)}" data-lk="desc" data-i="${i}" aria-label="الوصف">
+      <div class="adm-ops">
+        <button type="button" data-act="lup"  data-i="${i}" aria-label="لأعلى">↑</button>
+        <button type="button" data-act="ldown" data-i="${i}" aria-label="لأسفل">↓</button>
+        <button type="button" data-act="ldel" data-i="${i}" class="dl" aria-label="حذف">✕</button>
+      </div>
+    </div>`).join('')}
+  </div>
+  <button class="btn btn-quiet btn-block mt" type="button" data-act="addline">+ إضافة رقم جديد</button>
+
+  <h4 class="adm-h">وصول الطلبات للإدارة</h4>
+  <div class="note-box">
+    <b>الطلب بيروح فين؟</b>
+    <p>الطلب بيتحفظ على موبايل الساكن ويأخذ رقماً فوراً، وبعدها بيضغط زرار واحد
+    فيتفتح واتساب برسالة جاهزة فيها كل بيانات الطلب ويبعتها للرقم ده.
+    اكتب رقم واتساب إدارة الصيانة بالصيغة الدولية بدون <span class="ltr">+</span>.</p>
+  </div>
+  <label class="fld"><span>واتساب إدارة الصيانة</span>
+    <input class="ltr" data-c="intake.whatsapp" value="${esc((CFG.intake&&CFG.intake.whatsapp)||'')}" inputmode="tel" placeholder="201012345678"></label>`;
+}
+
+function admContent() {
+  const f = (id, label, val, ta) => ta
+    ? `<label class="fld"><span>${label}</span><textarea data-c="${id}" rows="2">${esc(val)}</textarea></label>`
+    : `<label class="fld"><span>${label}</span><input data-c="${id}" value="${esc(val)}"></label>`;
+  return `
+    <h4 class="adm-h">الهوية والعناوين</h4>
+    ${f('brand.company','اسم الشركة',CFG.brand.company)}
+    ${f('brand.tagline','السطر التعريفي',CFG.brand.tagline)}
+    ${f('brand.heroTitle','عنوان الصفحة الرئيسية',CFG.brand.heroTitle,1)}
+    ${f('brand.heroLede','الوصف تحته',CFG.brand.heroLede,1)}
+
+    <h4 class="adm-h">مواعيد العمل</h4>
+    <div class="grid-2">
+      ${f('hours.routine','الصيانة الدورية',CFG.hours.routine)}
+      ${f('hours.routineNote','ملاحظة',CFG.hours.routineNote)}
+      ${f('hours.emergency','الطوارئ',CFG.hours.emergency)}
+      ${f('hours.emergencyNote','ملاحظة',CFG.hours.emergencyNote)}
+    </div>
+
+    <h4 class="adm-h">درجات الأولوية وزمن الاستجابة</h4>
+    ${['normal','high','urgent'].map((k) => `<div class="grid-2">
+      ${f('priorities.'+k+'.label','الاسم',CFG.priorities[k].label)}
+      ${f('priorities.'+k+'.short','الزمن المختصر',CFG.priorities[k].short)}
+      ${f('priorities.'+k+'.sla','الزمن الكامل',CFG.priorities[k].sla)}
+      ${f('priorities.'+k+'.desc','الوصف',CFG.priorities[k].desc)}
+    </div>`).join('')}
+
+    <h4 class="adm-h">المناطق <span class="tag">سطر لكل منطقة</span></h4>
+    <label class="fld"><textarea data-list="areas" rows="5">${esc(CFG.areas.join('\n'))}</textarea></label>
+
+    <h4 class="adm-h">أماكن العطل داخل الوحدة</h4>
+    <label class="fld"><textarea data-list="spots" rows="5">${esc(CFG.spots.join('\n'))}</textarea></label>`;
+}
+
+function admLock() {
+  const on = !!CFG.locked;
+  const remoteOn = !!(REMOTE && REMOTE.locked);
+  return `
+    <div class="lock-card ${on ? 'on' : ''}">
+      <div class="lock-ico">${svg(on
+        ? 'M6.5 10.5V7.8a5.5 5.5 0 0 1 11 0v2.7M5.5 10.5h13a1.5 1.5 0 0 1 1.5 1.5v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19.5V12a1.5 1.5 0 0 1 1.5-1.5Z'
+        : 'M6.5 10.5V7.8a5.5 5.5 0 0 1 10.6-2M5.5 10.5h13a1.5 1.5 0 0 1 1.5 1.5v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19.5V12a1.5 1.5 0 0 1 1.5-1.5Z', 1.9)}</div>
+      <div class="lock-tx">
+        <b>${on ? 'الموقع مقفول' : 'الموقع مفتوح'}</b>
+        <span>${on ? 'الزوار يشوفون رسالة الإغلاق فقط.' : 'أي حد معاه اللينك يقدر يستخدم التطبيق.'}</span>
+      </div>
+      <button class="btn ${on ? 'btn-primary' : 'btn-danger'}" type="button" data-act="togglelock">${on ? 'فتح' : 'قفل'}</button>
+    </div>
+
+    <label class="fld"><span>عنوان رسالة الإغلاق</span><input data-c="lockTitle" value="${esc(CFG.lockTitle||'')}"></label>
+    <label class="fld"><span>نص الرسالة</span><textarea data-c="lockMessage" rows="3">${esc(CFG.lockMessage||'')}</textarea></label>
+
+    <div class="note-box ${CFG.locked !== remoteOn ? 'warn' : ''}">
+      <b>${CFG.locked !== remoteOn ? '⚠️ التغيير لسه محلي' : 'الحالة المنشورة'}</b>
+      <p>الحالة على السيرفر دلوقتي: <b>${remoteOn ? 'مقفول' : 'مفتوح'}</b>.
+      ${CFG.locked !== remoteOn ? 'عشان القفل/الفتح يوصل لكل الناس، روح تبويب «نشر» واتبع الخطوة.' : ''}</p>
+    </div>
+
+    <div class="note-box">
+      <b>قفل كامل (يشيل الموقع من النت)</b>
+      <p>القفل اللي فوق بيخفي التطبيق ويعرض رسالة. لو عايز الموقع يختفي تماماً
+      ويرجع <span class="ltr">404</span> لأي حد، شغّل ملف <code>قفل-كامل.cmd</code> الموجود في فولدر المشروع،
+      و<code>فتح-كامل.cmd</code> لما ترجّعه.</p>
+    </div>`;
+}
+
+function admPublish() {
+  const draftOn = hasDraft();
+  return `
+    <div class="note-box ${draftOn ? 'warn' : 'ok'}">
+      <b>${draftOn ? 'عندك تعديلات لسه مش منشورة' : 'كل التعديلات منشورة'}</b>
+      <p>${draftOn
+        ? 'التعديلات شغالة على جهازك دلوقتي عشان تجرّبها. عشان توصل لكل الناس، نزّل الملف وارفعه مكان القديم.'
+        : 'الموقع عند كل الناس زي ما هو عندك بالظبط.'}</p>
+    </div>
+
+    <button class="btn btn-primary btn-block" type="button" data-act="download">⬇️ تنزيل config.json</button>
+    <button class="btn btn-quiet btn-block mt" type="button" data-act="copy">📋 نسخ المحتوى</button>
+
+    <div class="note-box">
+      <b>الرفع من الموبايل — ٣٠ ثانية</b>
+      <ol class="mini">
+        <li>افتح صفحة الملف على GitHub</li>
+        <li>اضغط ✏️ تعديل</li>
+        <li>الصق المحتوى المنسوخ مكان القديم</li>
+        <li>Commit changes — والموقع بيتحدّث خلال دقيقة</li>
+      </ol>
+    </div>
+
+    <div class="note-box">
+      <b>الرفع من الكمبيوتر</b>
+      <p>احفظ الملف في فولدر <code>site</code> مكان القديم، وشغّل <code>نشر.cmd</code>.</p>
+    </div>
+
+    <button class="btn btn-quiet btn-block mt" type="button" data-act="revert">↩️ إلغاء التعديلات المحلية</button>
+    <button class="btn btn-quiet btn-block mt" type="button" data-act="logout">🔒 قفل لوحة الإدارة</button>`;
+}
+
+/* ── admin: one delegated handler for the whole panel ── */
+function initAdmin() {
+  $('#admTabs').addEventListener('click', (e) => {
+    const c = e.target.closest('.chip');
+    if (!c) return;
+    adminTab = c.dataset.t;
+    renderAdmin();
+  });
+
+  $('#admBody').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act], [data-seticon], [data-setcolor]');
+    if (!b) return;
+    const i = Number(b.dataset.i);
+
+    if (b.dataset.seticon)  { CFG.services[i].icon  = b.dataset.seticon;  saveDraft(); renderAll(); renderAdmin(); openEdit(i); return; }
+    if (b.dataset.setcolor) { CFG.services[i].color = b.dataset.setcolor; saveDraft(); renderAll(); renderAdmin(); openEdit(i); return; }
+
+    const act = b.dataset.act;
+    const swap = (arr, a, c2) => { if (c2 < 0 || c2 >= arr.length) return; const t = arr[a]; arr[a] = arr[c2]; arr[c2] = t; };
+
+    if (act === 'edit')   { openEdit(i, true); return; }
+    if (act === 'up')     swap(CFG.services, i, i - 1);
+    if (act === 'down')   swap(CFG.services, i, i + 1);
+    if (act === 'del') {
+      if (CFG.services.length <= 1) { toast('لازم تفضل خدمة واحدة على الأقل'); return; }
+      if (!confirm('حذف «' + CFG.services[i].name + '»؟')) return;
+      CFG.services.splice(i, 1);
+    }
+    if (act === 'addsvc') CFG.services.push({ id: uid(), name: 'خدمة جديدة', icon: 'gear', color: 'navy' });
+
+    if (act === 'lup')     swap(CFG.lines, i, i - 1);
+    if (act === 'ldown')   swap(CFG.lines, i, i + 1);
+    if (act === 'ldel')    { if (!confirm('حذف «' + CFG.lines[i].name + '»؟')) return; CFG.lines.splice(i, 1); }
+    if (act === 'addline') CFG.lines.push({ id: uid(), name: 'خط جديد', desc: '', tel: '' });
+
+    if (act === 'togglelock') {
+      CFG.locked = !CFG.locked;
+      toast(CFG.locked ? 'تم القفل محلياً — انشره ليصل للجميع' : 'تم الفتح محلياً — انشره ليصل للجميع');
+    }
+
+    if (act === 'download') { downloadConfig(); return; }
+    if (act === 'copy')     { copyConfig(); return; }
+    if (act === 'revert') {
+      if (!confirm('سيتم إلغاء كل التعديلات غير المنشورة والرجوع للنسخة المنشورة.')) return;
+      store.del('cfgDraft');
+      CFG = clone(REMOTE);
+      toast('تم الرجوع للنسخة المنشورة');
+    }
+    if (act === 'logout') {
+      isAdmin = false;
+      sessionStorage.removeItem('nawah.admin');
+      $('#adminTab').hidden = true;
+      document.body.classList.remove('is-admin');
+      if (CFG.locked) { renderLock(); return; }
+      go('home');
+      toast('تم قفل لوحة الإدارة');
+      return;
+    }
+
+    if (act !== 'download' && act !== 'copy') saveDraft();
+    renderAll();
+    renderAdmin();
+  });
+
+  /* text inputs across the panel */
+  $('#admBody').addEventListener('input', (e) => {
+    const t = e.target;
+    const i = Number(t.dataset.i);
+    if (t.dataset.k)    CFG.services[i][t.dataset.k] = t.value;
+    else if (t.dataset.lk) CFG.lines[i][t.dataset.lk] = t.value;
+    else if (t.dataset.list) CFG[t.dataset.list] = t.value.split('\n').map((x) => x.trim()).filter(Boolean);
+    else if (t.dataset.c) {
+      const path = t.dataset.c.split('.');
+      let o = CFG;
+      for (let k = 0; k < path.length - 1; k++) o = o[path[k]];
+      o[path[path.length - 1]] = t.value;
+    } else return;
+    saveDraft();
+    renderAll();
+  });
+}
+
+function openEdit(i, toggle) {
+  const el = $(`[data-edit="${i}"]`);
+  if (el) el.hidden = toggle ? !el.hidden : false;
+}
+
+function configJSON() {
+  const out = clone(CFG);
+  out.version = (REMOTE.version || 1) + (hasDraft() ? 1 : 0);
+  return JSON.stringify(out, null, 2);
+}
+
+function downloadConfig() {
+  const blob = new Blob([configJSON()], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'config.json';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast('تم التنزيل — ارفعه مكان القديم');
+}
+
+async function copyConfig() {
+  const txt = configJSON();
+  try {
+    await navigator.clipboard.writeText(txt);
+    toast('تم النسخ — الصقه في GitHub');
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.cssText = 'position:fixed;top:-2000px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast('تم النسخ'); }
+    catch (e2) { toast('انسخه يدوياً من الملف المنزَّل'); }
+    ta.remove();
+  }
+}
+
+/* ══════════ install (PWA) ══════════ */
 function isStandalone() {
-  return window.matchMedia('(display-mode: standalone)').matches
-      || window.navigator.standalone === true;
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -474,12 +804,14 @@ let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  $('#installHint').textContent = 'اضغط «تثبيت» ويظهر على شاشتك خلال ثانية.';
+  const h = $('#installHint');
+  if (h) h.textContent = 'اضغط «تثبيت» ويظهر على شاشتك خلال ثانية.';
 });
 
 window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
-  $('#installCard').hidden = true;
+  const c = $('#installCard');
+  if (c) c.hidden = true;
   toast('تم التثبيت — ستجده على شاشتك الرئيسية');
 });
 
@@ -491,12 +823,8 @@ async function doInstall() {
     if (outcome !== 'accepted') toast('تقدر تثبّته في أي وقت من الإعدادات');
     return;
   }
-  // iOS, or a browser that has not fired the event yet
   $('#iosSheet').hidden = false;
 }
-
-$('#btnInstall').addEventListener('click', doInstall);
-$('#btnInstall2').addEventListener('click', doInstall);
 
 function initInstallUI() {
   if (isStandalone()) { $('#installCard').hidden = true; return; }
@@ -506,18 +834,117 @@ function initInstallUI() {
   }
 }
 
-/* ══════════ boot ══════════ */
-renderServices();
-renderCounters();
-prefill();
-initInstallUI();
+/* ══════════ global wiring ══════════ */
+function renderAll() {
+  renderBrand();
+  renderServices();
+  renderSelects();
+  renderCounters();
+  if (!$('#v-emergency').hidden) renderEmergency();
+  if (!$('#v-list').hidden) renderList();
+}
 
-/* deep links from the manifest shortcuts: ?go=new / ?go=emergency */
-const wanted = new URLSearchParams(location.search).get('go');
-go(VIEWS.indexOf(wanted) > -1 ? wanted : 'home');
+function initEvents() {
+  document.addEventListener('click', (e) => {
+    const g = e.target.closest('[data-go]');
+    if (g) { go(g.dataset.go); return; }
+    const c = e.target.closest('[data-close]');
+    if (c) { const w = c.closest('.sheet-wrap'); if (w) w.hidden = true; return; }
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    const s = e.target.closest('#svcGrid [data-svc]');
+    if (s) { pickSvc(s.dataset.svc); go('new'); return; }
+    const p = e.target.closest('#pickSvc [data-svc]');
+    if (p) { pickSvc(p.dataset.svc); return; }
+    const pr = e.target.closest('#pickPrio .prio-op');
+    if (pr) {
+      draft.prio = pr.dataset.v;
+      $$('#pickPrio .prio-op').forEach((x) => x.setAttribute('aria-checked', String(x === pr)));
+      $('#errPrio').hidden = true;
+      return;
+    }
+    const rm = e.target.closest('#shotList [data-rm]');
+    if (rm) { draft.shots.splice(Number(rm.dataset.rm), 1); renderShots(); return; }
+    const rs = e.target.closest('[data-resend]');
+    if (rs) {
+      const r = requests.find((x) => x.no === rs.dataset.resend);
+      const wa = String((CFG.intake && CFG.intake.whatsapp) || '').replace(/\D/g, '');
+      if (!r) return;
+      if (!wa) { toast('رقم واتساب الإدارة لم يُضف بعد'); return; }
+      window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(requestText(r)), '_blank', 'noopener');
+      return;
+    }
+    const rq = e.target.closest('#reqList .req');
+    if (rq) { go('detail', rq.dataset.no); return; }
+    const fc = e.target.closest('#filters .chip');
+    if (fc) {
+      listFilter = fc.dataset.f;
+      $$('#filters .chip').forEach((x) => x.classList.toggle('on', x === fc));
+      renderList();
+      return;
+    }
+  });
+
+  $('#btnSettings').addEventListener('click', () => go('settings'));
+  $('#btnInstall').addEventListener('click', doInstall);
+  $('#btnInstall2').addEventListener('click', doInstall);
+  $('#btnAdmin').addEventListener('click', () => (isAdmin ? go('admin') : askPassword()));
+  $('#lockAdmin').addEventListener('click', askPassword);
+  $('#passGo').addEventListener('click', tryPassword);
+  $('#passInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryPassword(); });
+
+  $('#btnClear').addEventListener('click', () => {
+    if (!requests.length) { toast('لا توجد طلبات'); return; }
+    if (!confirm('سيتم مسح كل الطلبات المحفوظة على هذا الجهاز. متابعة؟')) return;
+    requests = [];
+    store.set('requests', requests);
+    renderCounters();
+    renderList();
+    toast('تم مسح الطلبات');
+  });
+
+  ['sName','sPhone','sBlock','sFlat'].forEach((id) => {
+    $('#' + id).addEventListener('change', (e) => {
+      profile[id.slice(1).toLowerCase()] = e.target.value.trim();
+      store.set('profile', profile);
+      toast('تم الحفظ');
+    });
+  });
+
+  /* hidden entrance: tap the logo 5 times */
+  let taps = 0, tapT;
+  $('.mark').addEventListener('click', () => {
+    taps++;
+    clearTimeout(tapT);
+    tapT = setTimeout(() => { taps = 0; }, 1200);
+    if (taps >= 5) { taps = 0; isAdmin ? go('admin') : askPassword(); }
   });
 }
+
+/* ══════════ boot ══════════ */
+(async function boot() {
+  if (!(await loadConfig())) return;
+
+  renderBrand();
+  renderServices();
+  renderSelects();
+  renderCounters();
+  prefill();
+  initForm();
+  initEvents();
+  initAdmin();
+  initInstallUI();
+
+  if (isAdmin) { $('#adminTab').hidden = false; document.body.classList.add('is-admin'); }
+
+  const hash = location.hash.replace('#', '');
+  if (hash === 'admin') { isAdmin ? go('admin') : askPassword(); }
+
+  if (CFG.locked && !isAdmin) { renderLock(); return; }
+
+  const wanted = new URLSearchParams(location.search).get('go');
+  go(VIEWS.indexOf(wanted) > -1 ? wanted : 'home');
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+})();
