@@ -807,3 +807,35 @@ form{ display:flex; flex-direction:column; gap:16px; }
 
 body.is-admin .tabbar{ grid-template-columns:repeat(5,1fr); }
 body.is-admin .tab span{ font-size:9.5px; }
+
+/* ── language switcher ───────────────────────────────── */
+.lang-wrap{ position:relative; margin-inline-start:auto; flex:none; }
+.lang-btn{ margin-inline-start:0 !important; font-family:var(--font-dis); font-weight:600; font-size:12.5px; }
+.lang-menu{
+  position:absolute; top:calc(100% + 8px); inset-inline-end:0; z-index:50;
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:14px; padding:6px; min-width:158px;
+  box-shadow:var(--shadow-2); display:flex; flex-direction:column; gap:2px;
+  animation:pop .16s ease;
+}
+@keyframes pop{ from{ opacity:0; transform:translateY(-6px) scale(.97); } }
+.lang-op{
+  display:flex; align-items:center; gap:10px; width:100%;
+  font-family:inherit; font-size:14px; color:var(--ink); text-align:start;
+  background:none; border:0; border-radius:10px; padding:9px 11px; cursor:pointer;
+}
+.lang-op:hover,.lang-op:active{ background:var(--sky-soft); }
+.lang-op em{
+  font-style:normal; font-family:var(--font-dis); font-weight:600; font-size:11px;
+  width:28px; height:22px; border-radius:6px; flex:none;
+  background:var(--line-soft); color:var(--muted);
+  display:grid; place-items:center;
+}
+.lang-op.on{ color:var(--navy); font-weight:600; }
+.lang-op.on em{ background:var(--navy); color:#fff; }
+
+/* LTR touch-ups (English / Russian) */
+[dir="ltr"] .hero-art{ inset-inline-end:-26px; }
+[dir="ltr"] .stamp, [dir="ltr"] .d-no{ direction:ltr; }
+[dir="ltr"] .fld select{ background-position:right 14px center; }
+[dir="ltr"] .prio-op i{ white-space:nowrap; }

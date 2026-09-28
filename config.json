@@ -7,32 +7,72 @@
     "company": "نواة المستقبل",
     "tagline": "للخدمات المتكاملة — مدينة الضبعة",
     "heroTitle": "عطل في البيت؟ الطلب يوصل الفني في دقيقة.",
-    "heroLede": "سجّل العطل، حدد مكانه ودرجة أولويته، وتابع حالته خطوة بخطوة حتى الإصلاح."
+    "heroLede": "سجّل العطل، حدد مكانه ودرجة أولويته، وتابع حالته خطوة بخطوة حتى الإصلاح.",
+    "company_en": "Nawah",
+    "company_ru": "Нава",
+    "tagline_en": "Integrated Services — El-Dabaa City",
+    "tagline_ru": "Интегрированные услуги — Эль-Дабаа",
+    "heroTitle_en": "Something broken at home? Your request reaches a technician in a minute.",
+    "heroTitle_ru": "Что-то сломалось дома? Заявка дойдёт до техника за минуту.",
+    "heroLede_en": "Log the fault, set its location and priority, and follow every step until it is fixed.",
+    "heroLede_ru": "Опишите неисправность, укажите место и приоритет и следите за каждым этапом до ремонта."
   },
   "hours": {
     "routine": "٨ ص — ٥ م",
     "routineNote": "يومياً عدا الجمعة",
     "emergency": "٢٤ ساعة",
-    "emergencyNote": "نظام ورديات متصل"
+    "emergencyNote": "نظام ورديات متصل",
+    "routine_en": "8 am — 5 pm",
+    "routine_ru": "8:00 — 17:00",
+    "routineNote_en": "Daily except Friday",
+    "routineNote_ru": "Ежедневно кроме пятницы",
+    "emergency_en": "24 hours",
+    "emergency_ru": "24 часа",
+    "emergencyNote_en": "Continuous shift system",
+    "emergencyNote_ru": "Непрерывный сменный режим"
   },
   "priorities": {
     "normal": {
       "label": "عادي",
       "sla": "خلال ٤٨ ساعة",
       "desc": "عطل لا يعطل استخدام الوحدة",
-      "short": "٤٨ ساعة"
+      "short": "٤٨ ساعة",
+      "label_en": "Routine",
+      "label_ru": "Обычный",
+      "short_en": "48 hours",
+      "short_ru": "48 часов",
+      "sla_en": "Within 48 hours",
+      "sla_ru": "В течение 48 часов",
+      "desc_en": "Does not stop you using the unit",
+      "desc_ru": "Не мешает пользоваться квартирой"
     },
     "high": {
       "label": "هام",
       "sla": "خلال ٨ ساعات",
       "desc": "يؤثر على استخدام جزء من الوحدة",
-      "short": "٨ ساعات"
+      "short": "٨ ساعات",
+      "label_en": "Important",
+      "label_ru": "Важный",
+      "short_en": "8 hours",
+      "short_ru": "8 часов",
+      "sla_en": "Within 8 hours",
+      "sla_ru": "В течение 8 часов",
+      "desc_en": "Affects part of the unit",
+      "desc_ru": "Затрагивает часть квартиры"
     },
     "urgent": {
       "label": "طارئ",
       "sla": "خلال ساعة واحدة",
       "desc": "تسريب، ماس كهربائي، انقطاع كامل",
-      "short": "ساعة واحدة"
+      "short": "ساعة واحدة",
+      "label_en": "Urgent",
+      "label_ru": "Срочный",
+      "short_en": "1 hour",
+      "short_ru": "1 час",
+      "sla_en": "Within one hour",
+      "sla_ru": "В течение часа",
+      "desc_en": "Leak, short circuit, total outage",
+      "desc_ru": "Течь, замыкание, полное отключение"
     }
   },
   "areas": [
@@ -56,49 +96,57 @@
       "id": "plumb",
       "name": "سباكة",
       "icon": "plumb",
-      "color": "navy"
+      "color": "navy",
+      "name_en": "Plumbing",
+      "name_ru": "Сантехника"
     },
     {
       "id": "elec",
       "name": "كهرباء",
       "icon": "bolt",
-      "color": "amber"
+      "color": "amber",
+      "name_en": "Electrical",
+      "name_ru": "Электрика"
     },
     {
       "id": "ac",
       "name": "تكييف",
       "icon": "ac",
-      "color": "green"
+      "color": "green",
+      "name_en": "Air conditioning",
+      "name_ru": "Кондиционер"
     },
     {
       "id": "carp",
       "name": "نجارة",
       "icon": "carp",
-      "color": "wood"
+      "color": "wood",
+      "name_en": "Carpentry",
+      "name_ru": "Столярные работы"
     },
     {
       "id": "sewer",
       "name": "صرف صحي",
       "icon": "sewer",
-      "color": "navy"
+      "color": "navy",
+      "name_en": "Sewage",
+      "name_ru": "Канализация"
     },
     {
       "id": "clean",
       "name": "نظافة",
       "icon": "clean",
-      "color": "green"
-    },
-    {
-      "id": "lift",
-      "name": "أسانسير",
-      "icon": "lift",
-      "color": "red"
+      "color": "green",
+      "name_en": "Cleaning",
+      "name_ru": "Уборка"
     },
     {
       "id": "other",
       "name": "أخرى",
       "icon": "gear",
-      "color": "grey"
+      "color": "grey",
+      "name_en": "Other",
+      "name_ru": "Другое"
     }
   ],
   "lines": [
@@ -107,37 +155,61 @@
       "name": "الخط الساخن للصيانة",
       "desc": "كل أعمال الصيانة داخل المدينة",
       "tel": "",
-      "hot": true
+      "hot": true,
+      "name_en": "Maintenance hotline",
+      "name_ru": "Горячая линия ремонта",
+      "desc_en": "All maintenance work in the city",
+      "desc_ru": "Все ремонтные работы в городке"
     },
     {
       "id": "power",
       "name": "أعطال الكهرباء",
       "desc": "انقطاع التيار · ماس كهربائي",
-      "tel": ""
+      "tel": "",
+      "name_en": "Electrical faults",
+      "name_ru": "Аварии электричества",
+      "desc_en": "Power cuts · short circuits",
+      "desc_ru": "Отключения · короткое замыкание"
     },
     {
       "id": "water",
       "name": "المياه والتسريبات",
       "desc": "قطع المياه · كسر ماسورة",
-      "tel": ""
+      "tel": "",
+      "name_en": "Water & leaks",
+      "name_ru": "Вода и протечки",
+      "desc_en": "No water · burst pipe",
+      "desc_ru": "Нет воды · прорыв трубы"
     },
     {
       "id": "sewer",
       "name": "الصرف الصحي",
       "desc": "طفح · انسداد",
-      "tel": ""
+      "tel": "",
+      "name_en": "Sewage",
+      "name_ru": "Канализация",
+      "desc_en": "Overflow · blockage",
+      "desc_ru": "Перелив · засор"
     },
     {
       "id": "fire",
       "name": "الحريق والإنقاذ",
       "desc": "بلاغات الحريق",
-      "tel": ""
+      "tel": "",
+      "name_en": "Fire & rescue",
+      "name_ru": "Пожарная служба",
+      "desc_en": "Fire reports",
+      "desc_ru": "Сообщения о пожаре"
     },
     {
       "id": "guard",
       "name": "الأمن — بوابة المدينة",
       "desc": "بلاغات أمنية · تصاريح",
-      "tel": ""
+      "tel": "",
+      "name_en": "Security — city gate",
+      "name_ru": "Охрана — КПП городка",
+      "desc_en": "Security reports · permits",
+      "desc_ru": "Сообщения · пропуска"
     }
   ],
   "authority": {
@@ -145,26 +217,82 @@
     "rows": [
       {
         "k": "العباسية — القاهرة",
-        "v": "15827 · 0222611480"
+        "v": "15827 · 0222611480",
+        "k_en": "Abbasia — Cairo",
+        "k_ru": "Аббасия — Каир"
       },
       {
         "k": "الضبعة",
-        "v": "0464670536"
+        "v": "0464670536",
+        "k_en": "El-Dabaa",
+        "k_ru": "Эль-Дабаа"
       },
       {
         "k": "فاكس العباسية",
-        "v": "0222616476"
+        "v": "0222616476",
+        "k_en": "Fax Abbasia",
+        "k_ru": "Факс Аббасия"
       },
       {
         "k": "فاكس الضبعة",
-        "v": "0464670846"
+        "v": "0464670846",
+        "k_en": "Fax El-Dabaa",
+        "k_ru": "Факс Эль-Дабаа"
       }
     ],
-    "address": "امتداد رمسيس — أول مدينة نصر — العباسية — القاهرة · ص.ب ١٠٨ — رقم بريدي ١١٣٨١"
+    "address": "امتداد رمسيس — أول مدينة نصر — العباسية — القاهرة · ص.ب ١٠٨ — رقم بريدي ١١٣٨١",
+    "name_en": "Nuclear Power Plants Authority",
+    "name_ru": "Управление атомных электростанций",
+    "address_en": "Ramsis St. Ext. — Nasr City — Abbasia — Cairo · P.O.Box 108 — Code 11381",
+    "address_ru": "Ул. Рамсис — Наср-Сити — Аббасия — Каир · а/я 108 — индекс 11381"
   },
   "intake": {
     "whatsapp": "",
     "email": "",
     "note": "رقم واتساب إدارة الصيانة بصيغة دولية بدون + مثل 201012345678"
+  },
+  "areas_en": [
+    "Residential zone A",
+    "Residential zone B",
+    "Residential zone C",
+    "Services area",
+    "Club & facilities"
+  ],
+  "areas_ru": [
+    "Жилая зона А",
+    "Жилая зона Б",
+    "Жилая зона В",
+    "Зона обслуживания",
+    "Клуб и объекты"
+  ],
+  "spots_en": [
+    "Kitchen",
+    "Bathroom",
+    "Living room",
+    "Bedroom",
+    "Balcony",
+    "Entrance / stairs",
+    "Outside the unit"
+  ],
+  "spots_ru": [
+    "Кухня",
+    "Ванная",
+    "Гостиная",
+    "Спальня",
+    "Балкон",
+    "Подъезд / лестница",
+    "Снаружи квартиры"
+  ],
+  "lockTitle_en": "Temporarily unavailable",
+  "lockTitle_ru": "Временно недоступно",
+  "lockMessage_en": "The service is being updated. Please try again later or contact the company office.",
+  "lockMessage_ru": "Сервис обновляется. Пожалуйста, попробуйте позже или свяжитесь с офисом компании.",
+  "langs": {
+    "default": "ar",
+    "enabled": [
+      "ar",
+      "en",
+      "ru"
+    ]
   }
 }

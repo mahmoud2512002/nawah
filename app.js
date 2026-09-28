@@ -18,7 +18,7 @@ const uid = () => 's' + Math.random().toString(36).slice(2, 8);
 
 const store = {
   get(k, d) { try { const v = localStorage.getItem('nawah.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem('nawah.' + k, JSON.stringify(v)); return true; } catch (e) { toast('مساحة التخزين ممتلئة'); return false; } },
+  set(k, v) { try { localStorage.setItem('nawah.' + k, JSON.stringify(v)); return true; } catch (e) { toast(T('err.storage')); return false; } },
   del(k)    { try { localStorage.removeItem('nawah.' + k); } catch (e) {} }
 };
 
@@ -70,15 +70,113 @@ const svg = (d, w) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
 const iconOf  = (s) => ICONS[s && s.icon] || ICONS.gear;
 const colorOf = (s) => COLORS[s && s.color] || COLORS.grey;
 
+
+/* ══════════ language ══════════ */
+let LANG = 'ar';
+
+function T(key) {
+  const row = I18N[key];
+  if (!row) return key;
+  return row[LANG] || row.ar || key;
+}
+
+/* a translatable value out of config.json: name / name_en / name_ru */
+function C(obj, field) {
+  if (!obj) return '';
+  if (LANG === 'ar') return obj[field] || '';
+  return obj[field + '_' + LANG] || obj[field] || '';
+}
+
+/* a translatable array out of config.json: areas / areas_en / areas_ru */
+function CL(key) {
+  if (LANG !== 'ar') {
+    const alt = CFG[key + '_' + LANG];
+    if (Array.isArray(alt) && alt.length === (CFG[key] || []).length) return alt;
+  }
+  return CFG[key] || [];
+}
+
+const locale = () => LANGS[LANG].locale;
+
+/* Arabic-Indic digits for Arabic, Western digits otherwise */
+function num(n) {
+  const str = String(n);
+  return LANG === 'ar' ? str.replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]) : str;
+}
+
+function fmtDate(d, withYear) {
+  const o = { day: 'numeric', month: 'long' };
+  if (withYear) o.year = 'numeric';
+  try { return d.toLocaleDateString(locale(), o); } catch (e) { return d.toLocaleDateString(); }
+}
+
+function applyI18n() {
+  const L = LANGS[LANG];
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = L.dir;
+  document.title = C(CFG && CFG.brand, 'company') + ' \u2014 ' + T('app.title').split('\u2014').pop().trim();
+
+  document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = T(el.dataset.t); });
+  document.querySelectorAll('[data-tp]').forEach((el) => { el.placeholder = T(el.dataset.tp); });
+  document.querySelectorAll('[data-ta]').forEach((el) => { el.setAttribute('aria-label', T(el.dataset.ta)); });
+
+  const flag = $('#langFlag');
+  if (flag) flag.textContent = L.flag;
+}
+
+function setLang(code, silent) {
+  if (!LANGS[code]) code = 'ar';
+  LANG = code;
+  store.set('lang', code);
+  applyI18n();
+  renderAll();
+  const open = VIEWS.find((v) => { const el = $('#v-' + v); return el && !el.hidden; });
+  if (open === 'detail') { /* re-render with the last request */ }
+  if (open) go(open);
+  if (!silent) toast(LANGS[code].name);
+}
+
+function initLangMenu() {
+  const enabled = (CFG.langs && CFG.langs.enabled) || ['ar', 'en', 'ru'];
+  $('#langMenu').innerHTML = enabled.map((code) => `
+    <button class="lang-op ${code === LANG ? 'on' : ''}" type="button" role="menuitem" data-lang="${code}">
+      <em>${LANGS[code].flag}</em><span>${LANGS[code].name}</span>
+    </button>`).join('');
+
+  $('#btnLang').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const m = $('#langMenu');
+    m.hidden = !m.hidden;
+    $('#btnLang').setAttribute('aria-expanded', String(!m.hidden));
+  });
+
+  $('#langMenu').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lang]');
+    if (!b) return;
+    $('#langMenu').hidden = true;
+    $('#btnLang').setAttribute('aria-expanded', 'false');
+    setLang(b.dataset.lang);
+    initLangMenu();
+  });
+
+  document.addEventListener('click', () => {
+    const m = $('#langMenu');
+    if (m && !m.hidden) { m.hidden = true; $('#btnLang').setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+function detectLang() {
+  const saved = store.get('lang', null);
+  if (saved && LANGS[saved]) return saved;
+  const nav = (navigator.language || 'ar').slice(0, 2).toLowerCase();
+  if (LANGS[nav]) return nav;
+  return (CFG.langs && CFG.langs.default) || 'ar';
+}
+
 /* the fixed path every request walks, from the letter:
    استلام ← إسناد بأمر شغل ← تنفيذ ← إصلاح ← غلق */
-const STAGES = [
-  { t:'تم استلام الطلب',     s:'سُجِّل الطلب لدى إدارة الصيانة' },
-  { t:'إسناد لفني بأمر شغل', s:'يصدر أمر شغل رسمي معتمد من الشركة' },
-  { t:'جاري التنفيذ',        s:'الفني في الموقع' },
-  { t:'تم الإصلاح',          s:'انتهاء أعمال الصيانة' },
-  { t:'غلق الطلب',           s:'بعد تأكيد الساكن' }
-];
+const STAGE_COUNT = 5;
+const stageT = (i) => ({ t: T('stg.' + i + 't'), s: T('stg.' + i + 's') });
 
 /* ══════════ state ══════════ */
 let CFG        = null;                       // live config (remote ⊕ admin draft)
@@ -103,7 +201,7 @@ async function loadConfig() {
   } catch (e) { /* offline — fall back to whatever we cached */ }
 
   if (!remote) remote = store.get('cfgCache', null);
-  if (!remote) { fatal('تعذّر تحميل إعدادات التطبيق (config.json).'); return false; }
+  if (!remote) { fatal(T('err.config')); return false; }
 
   store.set('cfgCache', remote);
   REMOTE = remote;
@@ -129,15 +227,15 @@ const hasDraft = () => !!store.get('cfgDraft', null);
 
 function fatal(msg) {
   document.body.innerHTML = `<div class="lockwrap"><div class="lockbox">
-    <h1>تعذّر تشغيل التطبيق</h1><p>${esc(msg)}</p></div></div>`;
+    <h1>${esc(T('err.fatal'))}</h1><p>${esc(msg)}</p></div></div>`;
 }
 
 /* ══════════ lock screen ══════════ */
 function renderLock() {
   $('#lockScreen').hidden = false;
   $('.shell').hidden = true;
-  $('#lockTitle').textContent = CFG.lockTitle || 'الموقع مغلق مؤقتاً';
-  $('#lockMsg').textContent   = CFG.lockMessage || '';
+  $('#lockTitle').textContent = C(CFG,'lockTitle');
+  $('#lockMsg').textContent   = C(CFG,'lockMessage');
 }
 
 /* ══════════ navigation ══════════ */
@@ -162,15 +260,14 @@ function go(name, arg) {
 
 /* ══════════ home ══════════ */
 function renderBrand() {
-  $('#bCompany').textContent = CFG.brand.company;
-  $('#bTagline').textContent = CFG.brand.tagline;
-  $('#heroTitle').textContent = CFG.brand.heroTitle;
-  $('#heroLede').textContent  = CFG.brand.heroLede;
-  $('#hRoutine').textContent      = CFG.hours.routine;
-  $('#hRoutineNote').textContent  = CFG.hours.routineNote;
-  $('#hEmergency').firstChild.nodeValue = CFG.hours.emergency;
-  $('#hEmergencyNote').textContent = CFG.hours.emergencyNote;
-  document.title = CFG.brand.company + ' — خدمات الضبعة';
+  $('#bCompany').textContent = C(CFG.brand,'company');
+  $('#bTagline').textContent = C(CFG.brand,'tagline');
+  $('#heroTitle').textContent = C(CFG.brand,'heroTitle');
+  $('#heroLede').textContent  = C(CFG.brand,'heroLede');
+  $('#hRoutine').textContent      = C(CFG.hours,'routine');
+  $('#hRoutineNote').textContent  = C(CFG.hours,'routineNote');
+  $('#hEmergency').firstChild.nodeValue = C(CFG.hours,'emergency');
+  $('#hEmergencyNote').textContent = C(CFG.hours,'emergencyNote');
 }
 
 function renderServices() {
@@ -178,7 +275,7 @@ function renderServices() {
     const c = colorOf(s);
     return `<button class="${cls}" type="button" ${extra || ''} data-svc="${esc(s.id)}">
       <span class="ic" style="background:${c.tint};color:${c.ink}">${svg(iconOf(s))}</span>
-      <b>${esc(s.name)}</b></button>`;
+      <b>${esc(C(s,'name'))}</b></button>`;
   };
   $('#svcGrid').innerHTML = CFG.services.map((s) => tile(s, 'svc')).join('');
   $('#pickSvc').innerHTML = CFG.services.map((s) => tile(s, 'pick', 'role="radio" aria-checked="false"')).join('');
@@ -194,21 +291,20 @@ function renderCounters() {
   const open = requests.filter((r) => r.stage < 2).length;
   const work = requests.filter((r) => r.stage === 2).length;
   const done = requests.filter((r) => r.stage >= 3).length;
-  $('#cOpen').textContent = AR(open);
-  $('#cWork').textContent = AR(work);
-  $('#cDone').textContent = AR(done);
+  $('#cOpen').textContent = num(open);
+  $('#cWork').textContent = num(work);
+  $('#cDone').textContent = num(done);
   $('#tabDot').hidden = requests.length === 0;
 }
 
 function renderSelects() {
-  $('#fArea').innerHTML = '<option value="">اختر…</option>' +
-    CFG.areas.map((a) => `<option>${esc(a)}</option>`).join('');
-  $('#fSpot').innerHTML = '<option value="">اختر…</option>' +
-    CFG.spots.map((a) => `<option>${esc(a)}</option>`).join('');
+  const ph = `<option value="">${esc(T('new.choose'))}</option>`;
+  $('#fArea').innerHTML = ph + CL('areas').map((a) => `<option>${esc(a)}</option>`).join('');
+  $('#fSpot').innerHTML = ph + CL('spots').map((a) => `<option>${esc(a)}</option>`).join('');
   $('#pickPrio').innerHTML = ['normal', 'high', 'urgent'].map((k) => {
     const p = CFG.priorities[k];
     return `<button type="button" class="prio-op" data-v="${k}" aria-checked="false">
-      <b>${esc(p.label)}</b><span>${esc(p.desc)}</span><i>${esc(p.short)}</i></button>`;
+      <b>${esc(C(p,'label'))}</b><span>${esc(C(p,'desc'))}</span><i>${esc(C(p,'short'))}</i></button>`;
   }).join('');
 }
 
@@ -242,8 +338,8 @@ function initForm() {
 
 function renderShots() {
   $('#shotList').innerHTML = draft.shots.map((s, i) => `
-    <div class="shot"><img src="${s}" alt="صورة العطل ${AR(i + 1)}">
-      <button type="button" data-rm="${i}" aria-label="حذف الصورة">&times;</button></div>`).join('');
+    <div class="shot"><img src="${s}" alt="${esc(T('new.addShots'))} ${num(i + 1)}">
+      <button type="button" data-rm="${i}" aria-label="${esc(T('a11y.delShot'))}">&times;</button></div>`).join('');
 }
 
 function onSubmit(e) {
@@ -266,7 +362,7 @@ function onSubmit(e) {
 
   if (bad) {
     $(bad).closest('.step').scrollIntoView({ behavior:'smooth', block:'center' });
-    toast('أكمل البيانات الناقصة');
+    toast(T('err.fill'));
     return;
   }
 
@@ -289,7 +385,7 @@ function onSubmit(e) {
   const p = CFG.priorities[draft.prio];
   const saved = requests[0];
   $('#doneNo').textContent = no;
-  $('#doneSla').textContent = 'الأولوية: ' + p.label + ' — الاستجابة المستهدفة ' + p.sla;
+  $('#doneSla').textContent = T('done.prio') + ': ' + C(p,'label') + ' — ' + T('done.target') + ' ' + C(p,'sla');
   $('#doneSheet').hidden = false;
   $('#btnDoneTrack').onclick = () => { $('#doneSheet').hidden = true; go('detail', no); };
   wireSend(saved);
@@ -323,7 +419,7 @@ function requestText(r) {
     'الوصف: ' + (r.desc || '—'),
     'للتواصل: ' + r.phone,
     '',
-    'التاريخ: ' + d.toLocaleString('ar-EG')
+    'التاريخ: ' + d.toLocaleString(locale())
   ].filter((x) => x !== '').join(String.fromCharCode(10));
 }
 
@@ -337,7 +433,7 @@ function wireSend(r) {
     btn.onclick = () => {
       window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(txt), '_blank', 'noopener');
       $('#doneSheet').hidden = true;
-      toast('افتح واتساب واضغط إرسال');
+      toast(T('done.waOpen'));
     };
     $('.send-hint').textContent = 'خطوة أخيرة — ابعت الطلب لإدارة الصيانة:';
   } else {
@@ -350,12 +446,12 @@ function wireSend(r) {
   }
 
   $('#btnCopyReq').onclick = async () => {
-    try { await navigator.clipboard.writeText(txt); toast('تم نسخ نص الطلب'); }
+    try { await navigator.clipboard.writeText(txt); toast(T('done.copied')); }
     catch (e) {
       const ta = document.createElement('textarea');
       ta.value = txt; ta.style.cssText = 'position:fixed;top:-2000px';
       document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); toast('تم النسخ'); } catch (e2) { toast('تعذّر النسخ'); }
+      try { document.execCommand('copy'); toast(T('adm.copied')); } catch (e2) { toast(T('adm.copyFail')); }
       ta.remove();
     }
   };
@@ -363,9 +459,9 @@ function wireSend(r) {
 
 /* ══════════ my requests ══════════ */
 function stageChip(stage) {
-  if (stage >= 3)  return '<span class="st st-done">تم الإصلاح</span>';
-  if (stage === 2) return '<span class="st st-work">جاري التنفيذ</span>';
-  return '<span class="st st-new">قيد المراجعة</span>';
+  if (stage >= 3)  return `<span class="st st-done">${esc(T('st.done'))}</span>`;
+  if (stage === 2) return `<span class="st st-work">${esc(T('st.work'))}</span>`;
+  return `<span class="st st-new">${esc(T('st.new'))}</span>`;
 }
 
 function renderList() {
@@ -377,7 +473,7 @@ function renderList() {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M14 3H7a1.6 1.6 0 0 0-1.6 1.6v14.8A1.6 1.6 0 0 0 7 21h10a1.6 1.6 0 0 0 1.6-1.6V7.6Z"/>
         <path d="M14 3v4.6h4.6M9 13h6M9 16.6h4"/></svg>
-      <b>${requests.length ? 'لا توجد طلبات في هذا التصنيف' : 'لا توجد طلبات بعد'}</b>
+      <b>${esc(T(requests.length ? 'list.emptyFA' : 'list.emptyA'))}</b>
       <p>${requests.length ? 'جرّب تصنيفاً آخر.' : 'سجّل أول عطل وسيصلك رقم الطلب فوراً مع متابعة كل خطوة.'}</p>
       ${requests.length ? '' : '<button class="btn btn-primary" data-go="new" type="button">طلب صيانة جديد</button>'}
     </div>`;
@@ -388,8 +484,8 @@ function renderList() {
     const s = svcById(r.svc), c = colorOf(s), d = new Date(r.at);
     return `<button class="req" type="button" data-no="${esc(r.no)}" data-p="${esc(r.prio)}">
       <span class="ic" style="background:${c.tint};color:${c.ink}">${svg(iconOf(s))}</span>
-      <span class="t">${esc(s.name)} — عمارة ${AR(esc(r.block))} / شقة ${AR(esc(r.flat))}</span>
-      <span class="s">${esc(r.no)} · ${AR(d.toLocaleDateString('ar-EG',{day:'numeric',month:'long'}))}</span>
+      <span class="t">${esc(C(s,'name'))} ${esc(T('lbl.building'))} ${num(esc(r.block))} / ${esc(T('lbl.flat'))} ${num(esc(r.flat))}</span>
+      <span class="s">${esc(r.no)} · ${num(fmtDate(d))}</span>
       ${stageChip(r.stage)}</button>`;
   }).join('');
 }
@@ -400,37 +496,37 @@ function renderDetail(no) {
   if (!r) { go('list'); return; }
   const s = svcById(r.svc), d = new Date(r.at), p = CFG.priorities[r.prio] || CFG.priorities.normal;
 
-  const timeline = STAGES.map((st, i) => {
+  const timeline = Array.from({length: STAGE_COUNT}, (_, i) => stageT(i)).map((st, i) => {
     const cls = i < r.stage ? 'done' : i === r.stage ? 'now' : '';
     const tick = i < r.stage
       ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 5 5L19 7"/></svg>'
       : '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>';
     return `<li class="tl ${cls}">
       <span class="node">${tick}</span><b>${esc(st.t)}</b>
-      ${i < STAGES.length - 1 ? '<span class="rail"></span>' : '<span class="rail" style="visibility:hidden"></span>'}
-      <span>${i === r.stage ? esc(st.s) + ' — الاستجابة المستهدفة ' + esc(p.sla) : esc(st.s)}</span></li>`;
+      ${i < STAGE_COUNT - 1 ? '<span class="rail"></span>' : '<span class="rail" style="visibility:hidden"></span>'}
+      <span>${i === r.stage ? esc(st.s) + ' ' + esc(T('done.target')) + ' ' + esc(C(p,'sla')) : esc(st.s)}</span></li>`;
   }).join('');
 
   $('#detail').innerHTML = `
     <div class="d-top">
       <div class="d-no">${esc(r.no)}</div>
-      <h3>${esc(s.name)}</h3>
+      <h3>${esc(C(s,'name'))}</h3>
       <div class="d-meta">
-        <span class="d-pill ${esc(r.prio)}">${esc(p.label)}</span>
-        <span class="d-pill">${esc(p.sla)}</span>
-        <span class="d-pill">${AR(d.toLocaleDateString('ar-EG',{day:'numeric',month:'long',year:'numeric'}))}</span>
+        <span class="d-pill ${esc(r.prio)}">${esc(C(p,'label'))}</span>
+        <span class="d-pill">${esc(C(p,'sla'))}</span>
+        <span class="d-pill">${num(fmtDate(d, true))}</span>
       </div>
     </div>
-    <section class="card"><h3>متابعة الحالة</h3><ul class="timeline">${timeline}</ul></section>
-    <section class="card"><h3>بيانات الطلب</h3>
+    <section class="card"><h3>${esc(T('det.track'))}</h3><ul class="timeline">${timeline}</ul></section>
+    <section class="card"><h3>${esc(T('det.data'))}</h3>
       <dl class="kv">
-        <dt>الموقع</dt><dd>${esc(r.area)} — عمارة ${AR(esc(r.block))}${r.floor ? ' / الدور ' + AR(esc(r.floor)) : ''} / شقة ${AR(esc(r.flat))}</dd>
-        ${r.spot ? `<dt>مكان العطل</dt><dd>${esc(r.spot)}</dd>` : ''}
-        <dt>أمر الشغل</dt><dd class="ltr">${esc(r.wo)}</dd>
-        <dt>للتواصل</dt><dd><a href="tel:${esc(r.phone)}">${AR(esc(r.phone))}</a></dd>
+        <dt>${esc(T('det.location'))}</dt><dd>${esc(r.area)} ${esc(T('lbl.building'))} ${num(esc(r.block))}${r.floor ? ' / ' + esc(T('lbl.floor')) + ' ' + num(esc(r.floor)) : ''} / ${esc(T('lbl.flat'))} ${num(esc(r.flat))}</dd>
+        ${r.spot ? `<dt>${esc(T('det.spot'))}</dt><dd>${esc(r.spot)}</dd>` : ''}
+        <dt>${esc(T('det.wo'))}</dt><dd class="ltr">${esc(r.wo)}</dd>
+        <dt>${esc(T('det.contact'))}</dt><dd><a href="tel:${esc(r.phone)}">${num(esc(r.phone))}</a></dd>
       </dl>
       ${r.desc ? `<p class="desc">${esc(r.desc)}</p>` : ''}
-      ${r.shots && r.shots.length ? `<div class="d-shots">${r.shots.map((x,i)=>`<img src="${x}" alt="صورة العطل ${AR(i+1)}">`).join('')}</div>` : ''}
+      ${r.shots && r.shots.length ? `<div class="d-shots">${r.shots.map((x,i)=>`<img src="${x}" alt="صورة العطل ${num(i+1)}">`).join('')}</div>` : ''}
     </section>
     <section class="card"><h3>إرسال / متابعة مع الإدارة</h3>
       <p>لو لسه مبعتّش الطلب للإدارة، أو عايز تسأل عن حالته:</p>
@@ -454,16 +550,16 @@ function renderEmergency() {
       ? svg('M15.5 14.9a2 2 0 0 1 2.1-.45l2.3.9A2 2 0 0 1 21 17.3v1.9a2 2 0 0 1-2.2 2A17.6 17.6 0 0 1 3 5.2 2 2 0 0 1 5 3h1.9a2 2 0 0 1 2 1.6l.5 2.4a2 2 0 0 1-.6 1.9l-1 1a14 14 0 0 0 5.4 5.4l1-1Z')
       : svg(ICONS[pick[l.id]] || ICONS.gear);
     const body = `<span class="ic" style="${l.hot ? '' : `background:${c.tint};color:${c.ink}`}">${icon}</span>
-      <span class="tx"><b>${esc(l.name)}</b><span>${esc(l.desc)}</span></span>
-      <span class="no">${tel ? AR(esc(tel)) : 'لم يُضف بعد'}</span>`;
+      <span class="tx"><b>${esc(C(l,'name'))}</b><span>${esc(C(l,'desc'))}</span></span>
+      <span class="no">${tel ? num(esc(tel)) : 'لم يُضف بعد'}</span>`;
     return tel ? `<a class="emg ${l.hot ? 'hot' : ''}" href="tel:${esc(tel)}">${body}</a>`
                : `<div class="emg unset ${l.hot ? 'hot' : ''}">${body}</div>`;
   }).join('');
 
   const a = CFG.authority;
-  $('#authCard').innerHTML = `<h3>${esc(a.name)}</h3>
-    <dl class="kv">${a.rows.map((r) => `<dt>${esc(r.k)}</dt><dd class="ltr">${AR(esc(r.v))}</dd>`).join('')}</dl>
-    <p class="fine">${esc(a.address)}</p>`;
+  $('#authCard').innerHTML = `<h3>${esc(C(a,'name'))}</h3>
+    <dl class="kv">${a.rows.map((r) => `<dt>${esc(C(r,'k'))}</dt><dd class="ltr">${num(esc(r.v))}</dd>`).join('')}</dl>
+    <p class="fine">${esc(C(a,'address'))}</p>`;
 }
 
 /* ══════════ settings ══════════ */
@@ -472,8 +568,8 @@ function renderSettings() {
   $('#sPhone').value = profile.phone || '';
   $('#sBlock').value = profile.block || '';
   $('#sFlat').value  = profile.flat  || '';
-  $('#installState').textContent = isStandalone() ? 'مثبّت بالفعل' : 'متاح';
-  $('#adminRow').textContent = isAdmin ? 'مفتوحة' : 'تحتاج كلمة مرور';
+  $('#installState').textContent = T(isStandalone() ? 'set.installed' : 'set.available');
+  $('#adminRow').textContent = T(isAdmin ? 'set.adminOpen' : 'set.adminLocked');
 }
 
 function prefill() {
@@ -506,14 +602,14 @@ function tryPassword() {
   $('#adminTab').hidden = false;
   document.body.classList.add('is-admin');
   go('admin');
-  toast('أهلاً — لوحة الإدارة مفتوحة');
+  toast(T('pass.welcome'));
 }
 
 let adminTab = 'services';
 
 function renderAdmin() {
   $('#pubDot').hidden = !hasDraft();
-  $$('#admTabs .chip').forEach((c) => c.classList.toggle('on', c.dataset.t === adminTab));
+  $$('#admTabs .chip').forEach((c) => c.classList.toggle('on', c.dataset.tab === adminTab));
   const box = $('#admBody');
   if (adminTab === 'services')  box.innerHTML = admServices();
   if (adminTab === 'lines')     box.innerHTML = admLines();
@@ -676,7 +772,7 @@ function initAdmin() {
   $('#admTabs').addEventListener('click', (e) => {
     const c = e.target.closest('.chip');
     if (!c) return;
-    adminTab = c.dataset.t;
+    adminTab = c.dataset.tab;
     renderAdmin();
   });
 
@@ -695,29 +791,29 @@ function initAdmin() {
     if (act === 'up')     swap(CFG.services, i, i - 1);
     if (act === 'down')   swap(CFG.services, i, i + 1);
     if (act === 'del') {
-      if (CFG.services.length <= 1) { toast('لازم تفضل خدمة واحدة على الأقل'); return; }
-      if (!confirm('حذف «' + CFG.services[i].name + '»؟')) return;
+      if (CFG.services.length <= 1) { toast(T('adm.keepOne')); return; }
+      if (!confirm(T('adm.delAsk') + ' «' + C(CFG.services[i],'name') + '»؟')) return;
       CFG.services.splice(i, 1);
     }
-    if (act === 'addsvc') CFG.services.push({ id: uid(), name: 'خدمة جديدة', icon: 'gear', color: 'navy' });
+    if (act === 'addsvc') CFG.services.push({ id: uid(), name: T('adm.newSvc'), icon: 'gear', color: 'navy' });
 
     if (act === 'lup')     swap(CFG.lines, i, i - 1);
     if (act === 'ldown')   swap(CFG.lines, i, i + 1);
-    if (act === 'ldel')    { if (!confirm('حذف «' + CFG.lines[i].name + '»؟')) return; CFG.lines.splice(i, 1); }
-    if (act === 'addline') CFG.lines.push({ id: uid(), name: 'خط جديد', desc: '', tel: '' });
+    if (act === 'ldel')    { if (!confirm(T('adm.delAsk') + ' «' + C(CFG.lines[i],'name') + '»؟')) return; CFG.lines.splice(i, 1); }
+    if (act === 'addline') CFG.lines.push({ id: uid(), name: T('adm.newLine'), desc: '', tel: '' });
 
     if (act === 'togglelock') {
       CFG.locked = !CFG.locked;
-      toast(CFG.locked ? 'تم القفل محلياً — انشره ليصل للجميع' : 'تم الفتح محلياً — انشره ليصل للجميع');
+      toast(T(CFG.locked ? 'adm.lockedLocal' : 'adm.openedLocal'));
     }
 
     if (act === 'download') { downloadConfig(); return; }
     if (act === 'copy')     { copyConfig(); return; }
     if (act === 'revert') {
-      if (!confirm('سيتم إلغاء كل التعديلات غير المنشورة والرجوع للنسخة المنشورة.')) return;
+      if (!confirm(T('adm.revertAsk'))) return;
       store.del('cfgDraft');
       CFG = clone(REMOTE);
-      toast('تم الرجوع للنسخة المنشورة');
+      toast(T('adm.reverted'));
     }
     if (act === 'logout') {
       isAdmin = false;
@@ -726,7 +822,7 @@ function initAdmin() {
       document.body.classList.remove('is-admin');
       if (CFG.locked) { renderLock(); return; }
       go('home');
-      toast('تم قفل لوحة الإدارة');
+      toast(T('adm.loggedOut'));
       return;
     }
 
@@ -772,22 +868,22 @@ function downloadConfig() {
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-  toast('تم التنزيل — ارفعه مكان القديم');
+  toast(T('adm.downloaded'));
 }
 
 async function copyConfig() {
   const txt = configJSON();
   try {
     await navigator.clipboard.writeText(txt);
-    toast('تم النسخ — الصقه في GitHub');
+    toast(T('adm.copied'));
   } catch (e) {
     const ta = document.createElement('textarea');
     ta.value = txt;
     ta.style.cssText = 'position:fixed;top:-2000px';
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); toast('تم النسخ'); }
-    catch (e2) { toast('انسخه يدوياً من الملف المنزَّل'); }
+    try { document.execCommand('copy'); toast(T('adm.copied')); }
+    catch (e2) { toast(T('adm.copyFail')); }
     ta.remove();
   }
 }
@@ -812,7 +908,7 @@ window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
   const c = $('#installCard');
   if (c) c.hidden = true;
-  toast('تم التثبيت — ستجده على شاشتك الرئيسية');
+  toast(T('install.done'));
 });
 
 async function doInstall() {
@@ -820,22 +916,24 @@ async function doInstall() {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     deferredPrompt = null;
-    if (outcome !== 'accepted') toast('تقدر تثبّته في أي وقت من الإعدادات');
+    if (outcome !== 'accepted') toast(T('install.later'));
     return;
   }
   $('#iosSheet').hidden = false;
 }
 
 function initInstallUI() {
+  $('#installHint').textContent = T('install.hint');
   if (isStandalone()) { $('#installCard').hidden = true; return; }
   if (isIOS) {
     $('#installHint').textContent = 'من زر المشاركة في سفاري ← «إضافة إلى الشاشة الرئيسية».';
-    $('#btnInstall').textContent = 'كيف؟';
+    $('#btnInstall').textContent = T('install.how');
   }
 }
 
 /* ══════════ global wiring ══════════ */
 function renderAll() {
+  applyI18n();
   renderBrand();
   renderServices();
   renderSelects();
@@ -869,7 +967,7 @@ function initEvents() {
       const r = requests.find((x) => x.no === rs.dataset.resend);
       const wa = String((CFG.intake && CFG.intake.whatsapp) || '').replace(/\D/g, '');
       if (!r) return;
-      if (!wa) { toast('رقم واتساب الإدارة لم يُضف بعد'); return; }
+      if (!wa) { toast(T('det.noWa')); return; }
       window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(requestText(r)), '_blank', 'noopener');
       return;
     }
@@ -893,20 +991,20 @@ function initEvents() {
   $('#passInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryPassword(); });
 
   $('#btnClear').addEventListener('click', () => {
-    if (!requests.length) { toast('لا توجد طلبات'); return; }
-    if (!confirm('سيتم مسح كل الطلبات المحفوظة على هذا الجهاز. متابعة؟')) return;
+    if (!requests.length) { toast(T('set.noReq')); return; }
+    if (!confirm(T('set.clearAsk'))) return;
     requests = [];
     store.set('requests', requests);
     renderCounters();
     renderList();
-    toast('تم مسح الطلبات');
+    toast(T('set.cleared'));
   });
 
   ['sName','sPhone','sBlock','sFlat'].forEach((id) => {
     $('#' + id).addEventListener('change', (e) => {
       profile[id.slice(1).toLowerCase()] = e.target.value.trim();
       store.set('profile', profile);
-      toast('تم الحفظ');
+      toast(T('saved'));
     });
   });
 
@@ -923,6 +1021,10 @@ function initEvents() {
 /* ══════════ boot ══════════ */
 (async function boot() {
   if (!(await loadConfig())) return;
+
+  LANG = detectLang();
+  applyI18n();
+  initLangMenu();
 
   renderBrand();
   renderServices();
