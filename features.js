@@ -19,11 +19,13 @@ function autoTech(svcId) {
 async function deliver(r) {
   let archived = false;
 
+  const light = Object.assign({}, r, { shots: [] });   // photos stay on the device
+
   if (DB.ready()) {
     try { await DB.addRequest(r); archived = true; }
-    catch (e) { QUEUE.add(r); }
+    catch (e) { QUEUE.add(light); }
   } else {
-    QUEUE.add(r);
+    QUEUE.add(light);
   }
 
   /* notify the technician on duty for this trade */
@@ -90,10 +92,7 @@ async function paintFooter() {
   if (v == null) { const m = await DB.stats(); v = m && m.visits; }
   $('#fVisits').textContent = v == null ? '—' : num(v);
 
-  try {
-    const rows = await DB.req('requests?select=no&limit=1', { prefer: 'count=exact' });
-    $('#fReqs').textContent = num((rows && rows.length ? await countRequests() : await countRequests()));
-  } catch (e) { $('#fReqs').textContent = num(requests.length); }
+  $('#fReqs').textContent = num(await countRequests());
 }
 
 async function countRequests() {

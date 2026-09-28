@@ -875,14 +875,14 @@ function initAdmin() {
   });
 
   $('#admBody').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-act], [data-seticon], [data-setcolor]');
+    const b = e.target.closest('[data-act], [data-seticon], [data-setcolor], [data-trade]');
     if (!b) return;
     const i = Number(b.dataset.i);
 
     if (b.dataset.seticon)  { CFG.services[i].icon  = b.dataset.seticon;  saveDraft(); renderAll(); renderAdmin(); openEdit(i); return; }
     if (b.dataset.setcolor) { CFG.services[i].color = b.dataset.setcolor; saveDraft(); renderAll(); renderAdmin(); openEdit(i); return; }
 
-    const act = b.dataset.act;
+    const act = b.dataset.act || '';
     const swap = (arr, a, c2) => { if (c2 < 0 || c2 >= arr.length) return; const t = arr[a]; arr[a] = arr[c2]; arr[c2] = t; };
 
     if (act === 'edit')   { openEdit(i, true); return; }
