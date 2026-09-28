@@ -572,6 +572,8 @@ function renderSettings() {
   $('#sBlock').value = profile.block || '';
   $('#sFlat').value  = profile.flat  || '';
   $('#installState').textContent = T(isStandalone() ? 'set.installed' : 'set.available');
+  const ns = $('#notifState');
+  if (ns) ns.textContent = NOTIF.on ? T('notif.on') : T('notif.enable');
   $('#adminRow').textContent = T(isAdmin ? 'set.adminOpen' : 'set.adminLocked');
 }
 
@@ -621,6 +623,7 @@ function renderAdmin() {
   if (adminTab === 'publish')   box.innerHTML = admPublish();
   if (adminTab === 'tech')      box.innerHTML = admTech();
   if (adminTab === 'backend')   box.innerHTML = admBackend();
+  if (adminTab === 'ann')       box.innerHTML = admAnn();
   if (adminTab === 'archive')   { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admArchive(box); }
 }
 
@@ -905,6 +908,10 @@ function initAdmin() {
       toast(T(CFG.locked ? 'adm.lockedLocal' : 'adm.openedLocal'));
     }
 
+    if (act === 'addann')  { (CFG.announcements = CFG.announcements || []).push({ id: uid(), date: '', title: '', body: '' }); }
+    if (act === 'adel')    { CFG.announcements.splice(i, 1); }
+    if (act === 'aup')     { const A = CFG.announcements; if (i > 0) { const x = A[i]; A[i] = A[i-1]; A[i-1] = x; } }
+    if (act === 'adown')   { const A = CFG.announcements; if (i < A.length - 1) { const x = A[i]; A[i] = A[i+1]; A[i+1] = x; } }
     if (act === 'addtech') { (CFG.technicians = CFG.technicians || []).push({ id: uid(), name: T('adm.newTech'), phone: '', pin: '0000', svcs: [] }); }
     if (act === 'tdel')    { if (!confirm(T('adm.delAsk') + ' \u00ab' + CFG.technicians[i].name + '\u00bb\u061f')) return; CFG.technicians.splice(i, 1); }
     if (b.dataset.trade) {
@@ -954,6 +961,7 @@ function initAdmin() {
     const i = Number(t.dataset.i);
     if (t.dataset.k)    CFG.services[i][t.dataset.k] = t.value;
     else if (t.dataset.tk) CFG.technicians[i][t.dataset.tk] = t.value;
+    else if (t.dataset.ak) CFG.announcements[i][LANG === 'ar' ? t.dataset.ak : t.dataset.ak + '_' + LANG] = t.value;
     else if (t.dataset.lk) CFG.lines[i][t.dataset.lk] = t.value;
     else if (t.dataset.list) CFG[t.dataset.list] = t.value.split('\n').map((x) => x.trim()).filter(Boolean);
     else if (t.dataset.c) {
@@ -1052,6 +1060,7 @@ function initInstallUI() {
 /* ══════════ global wiring ══════════ */
 function renderAll() {
   applyI18n();
+  if (typeof renderAnn === 'function' && CFG) renderAnn();
   if (typeof paintFooter === 'function' && CFG) paintFooter();
   renderBrand();
   renderServices();
@@ -1108,6 +1117,8 @@ function initEvents() {
   $('#lockAdmin').addEventListener('click', askPassword);
   $('#passGo').addEventListener('click', tryPassword);
   $('#passInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryPassword(); });
+
+  $('#btnNotif').addEventListener('click', () => { NOTIF.on ? NOTIF.off() : NOTIF.ask(); });
 
   $('#btnClear').addEventListener('click', () => {
     if (!requests.length) { toast(T('set.noReq')); return; }
@@ -1218,11 +1229,13 @@ async function bootExtras() {
 
   initTech();
   paintFooter();
+  renderAnn();
+  startPolling();
 
   /* live updates for the admin and technician views */
   if (DB.ready()) {
-    DB.live(() => {
-      if (!$('#v-tech').hidden) renderTech();
+    DB.live((payload) => {
+      onLiveChange(payload);
       if (!$('#v-admin').hidden && adminTab === 'archive') renderAdmin();
     });
   }

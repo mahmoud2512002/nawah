@@ -88,6 +88,30 @@ const I18N = {
   'adm.qr':           { ar:'QR لكل عمارة', en:'QR per building', ru:'QR для дома' },
   'adm.qrHint':       { ar:'اكتب رقم العمارة واطبع الكود وعلّقه عند المدخل — الساكن يمسحه فيفتح الطلب ورقم العمارة متملي.', en:'Type the building number, print the code and post it at the entrance — residents scan it and the building is pre-filled.', ru:'Введите номер дома, распечатайте код и повесьте у входа.' },
 
+
+  /* ── announcements & notifications ── */
+  'ann.title':     { ar:'إعلانات الشركة', en:'Notices', ru:'Объявления' },
+  'ann.new':       { ar:'جديد', en:'New', ru:'Новое' },
+  'ann.hint':      { ar:'الإعلانات تظهر في الصفحة الرئيسية لكل السكان — قطع مياه، صيانة مجدولة، تعليمات.', en:'Notices appear on the home screen for every resident — water shutdowns, scheduled maintenance, instructions.', ru:'Объявления видны всем жильцам на главной — отключение воды, плановые работы.' },
+  'ann.titlePh':   { ar:'عنوان الإعلان', en:'Notice title', ru:'Заголовок' },
+  'ann.datePh':    { ar:'التاريخ', en:'Date', ru:'Дата' },
+  'ann.bodyPh':    { ar:'التفاصيل', en:'Details', ru:'Подробности' },
+  'ann.add':       { ar:'+ إضافة إعلان', en:'+ Add a notice', ru:'+ Добавить' },
+  'ann.langsT':    { ar:'اللغات', en:'Languages', ru:'Языки' },
+  'ann.langsB':    { ar:'غيّر لغة التطبيق من الزرار فوق واكتب الإعلان تاني — كل لغة بتتحفظ لوحدها.', en:'Switch the app language from the button above and type the notice again — each language is stored separately.', ru:'Переключите язык вверху и введите текст заново — каждый язык хранится отдельно.' },
+  'adm.tAnn':      { ar:'الإعلانات', en:'Notices', ru:'Объявления' },
+
+  'notif.row':     { ar:'إشعارات تحديث الطلب', en:'Request update alerts', ru:'Уведомления о заявках' },
+  'notif.on':      { ar:'الإشعارات مُفعّلة', en:'Alerts on', ru:'Уведомления включены' },
+  'notif.off':     { ar:'موقوفة', en:'Off', ru:'Выключены' },
+  'notif.enable':  { ar:'تفعيل', en:'Enable', ru:'Включить' },
+  'notif.blocked': { ar:'الإشعارات محظورة من إعدادات المتصفح', en:'Alerts are blocked in your browser settings', ru:'Уведомления заблокированы в браузере' },
+  'notif.unsupported': { ar:'المتصفح ما يدعمش الإشعارات', en:'This browser does not support alerts', ru:'Браузер не поддерживает уведомления' },
+  'notif.testT':   { ar:'نواة المستقبل', en:'Nawah', ru:'Нава' },
+  'notif.testB':   { ar:'هيوصلك إشعار مع كل تحديث لطلبك.', en:'You will be alerted on every update to your request.', ru:'Вы получите уведомление при каждом обновлении.' },
+  'notif.jobT':    { ar:'مهمة جديدة', en:'New job', ru:'Новая задача' },
+  'notif.stageT':  { ar:'تحديث لطلب', en:'Update on', ru:'Обновление' },
+
   /* ── shell ─────────────────────────────────────────── */
   'app.title':        { ar:'نواة المستقبل — خدمات الضبعة', en:'Nawah — El-Dabaa Services', ru:'Нава — Услуги Эль-Дабаа' },
   'nav.home':         { ar:'الرئيسية',      en:'Home',      ru:'Главная' },

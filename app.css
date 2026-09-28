@@ -978,3 +978,40 @@ body.is-tech .tabbar{ grid-template-columns:repeat(5,1fr); }
 body.is-tech.is-admin .tabbar{ grid-template-columns:repeat(6,1fr); }
 body.is-tech .tab span,
 body.is-admin .tab span{ font-size:9.5px; }
+
+/* ── الإعلانات ───────────────────────────────────────── */
+#annBox{ display:flex; flex-direction:column; gap:10px; }
+.ann{
+  background:var(--surface); border:1px solid var(--line-soft);
+  border-radius:var(--r); padding:14px; box-shadow:var(--shadow-1);
+  position:relative; overflow:hidden;
+}
+.ann.new{ border-color:#CBD6F2; background:linear-gradient(180deg,#FBFCFF,var(--surface)); }
+.ann.new::before{
+  content:""; position:absolute; inset-inline-start:0; top:0; bottom:0;
+  width:3px; background:var(--sky);
+}
+.ann-top{ display:flex; align-items:flex-start; gap:11px; }
+.ann-ic{
+  width:34px; height:34px; border-radius:11px; flex:none;
+  background:var(--sky-soft); color:var(--navy); display:grid; place-items:center;
+}
+.ann-ic svg{ width:18px; height:18px; }
+.ann-h{ display:flex; flex-direction:column; min-width:0; flex:1; }
+.ann-h b{ font-size:14.5px; font-weight:600; color:var(--ink); line-height:1.5; }
+.ann-h span{ font-size:11px; color:var(--muted); }
+.ann-new{
+  font-style:normal; font-size:10px; font-weight:600; flex:none;
+  background:var(--sky); color:#fff; border-radius:6px; padding:3px 8px;
+}
+.ann p{ margin:9px 0 0; font-size:13.5px; color:var(--muted); line-height:1.75; }
+
+.adm-item.ann-edit{ flex-wrap:wrap; }
+.adm-item.ann-edit .adm-name{ flex:1 1 58%; }
+.adm-date{ flex:1 1 30%; font-size:13px !important; }
+.adm-body{
+  flex:1 1 100%; font-family:inherit; font-size:13.5px; line-height:1.7;
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:9px; padding:8px 10px; resize:vertical; color:var(--ink);
+}
+.adm-body:focus{ outline:none; border-color:var(--sky); box-shadow:0 0 0 3px rgba(78,107,214,.15); }

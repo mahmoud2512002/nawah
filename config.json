@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "locked": false,
   "lockTitle": "الموقع مغلق مؤقتاً",
   "lockMessage": "جاري تحديث الخدمة. برجاء المحاولة لاحقاً أو التواصل مع إدارة الشركة.",
@@ -323,16 +323,5 @@
       ]
     }
   ],
-  "announcements": [
-    {
-      "id": "a1",
-      "date": "",
-      "title": "",
-      "title_en": "",
-      "title_ru": "",
-      "body": "",
-      "body_en": "",
-      "body_ru": ""
-    }
-  ]
+  "announcements": []
 }

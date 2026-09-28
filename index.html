@@ -144,6 +144,8 @@
         <div class="counter"><b id="cDone">0</b><span data-t="home.cDone">تم الإصلاح</span></div>
       </div>
 
+      <section id="annBox" hidden></section>
+
       <h2 class="sec" data-t="home.pickSvc">اختر نوع الخدمة</h2>
       <div class="svc-grid" id="svcGrid"></div>
 
@@ -301,6 +303,9 @@
         <div class="rows">
           <button class="row-btn" id="btnInstall2" type="button"><span data-t="set.install">تثبيت</span><em id="installState">متاح</em></button>
           <button class="row-btn" data-go="admin" type="button"><span data-t="set.adminRow">لوحة الإدارة</span><em id="adminRow">تحتاج كلمة مرور</em></button>
+          <button class="row-btn" id="btnNotif" type="button">
+            <span data-t="notif.row">إشعارات تحديث الطلب</span><em id="notifState">—</em>
+          </button>
           <button class="row-btn" id="btnClear" type="button"><span data-t="set.clear">مسح الطلبات</span><em class="danger" data-t="set.clearBtn">مسح</em></button>
         </div>
         <p class="fine" data-t="set.version">الإصدار ١٫٠ · يعمل بدون إنترنت بعد أول فتح.</p>
@@ -321,6 +326,7 @@
         <button class="chip on" data-tab="services" type="button" data-t="adm.tServices">الخدمات</button>
         <button class="chip" data-tab="lines" type="button" data-t="adm.tLines">الأرقام</button>
         <button class="chip" data-tab="content" type="button" data-t="adm.tContent">النصوص</button>
+        <button class="chip" data-tab="ann" type="button" data-t="adm.tAnn">الإعلانات</button>
         <button class="chip" data-tab="tech" type="button" data-t="adm.tTech">الفنيين</button>
         <button class="chip" data-tab="archive" type="button" data-t="adm.tArchive">الأرشيف</button>
         <button class="chip" data-tab="backend" type="button" data-t="adm.tBackend">السيرفر</button>
@@ -472,6 +478,7 @@
 <script src="i18n.js"></script>
 <script src="backend.js"></script>
 <script src="features.js"></script>
+<script src="extra.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
