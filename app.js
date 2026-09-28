@@ -239,10 +239,11 @@ function renderLock() {
 }
 
 /* ══════════ navigation ══════════ */
-const VIEWS = ['home', 'new', 'list', 'detail', 'emergency', 'settings', 'admin'];
+const VIEWS = ['home', 'new', 'list', 'detail', 'emergency', 'settings', 'admin', 'tech'];
 
 function go(name, arg) {
   if (name === 'admin' && !isAdmin) { askPassword(); return; }
+  if (name === 'tech' && !TECH) { askTech(); return; }
   VIEWS.forEach((v) => { const el = $('#v-' + v); if (el) el.hidden = (v !== name); });
   $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.go === name));
   window.scrollTo(0, 0);
@@ -252,6 +253,7 @@ function go(name, arg) {
   if (name === 'emergency') renderEmergency();
   if (name === 'settings')  renderSettings();
   if (name === 'admin')     renderAdmin();
+  if (name === 'tech')      renderTech();
   if (name === 'home')      renderCounters();
 
   const v = $('#v-' + name);
@@ -389,6 +391,7 @@ function onSubmit(e) {
   $('#doneSheet').hidden = false;
   $('#btnDoneTrack').onclick = () => { $('#doneSheet').hidden = true; go('detail', no); };
   wireSend(saved);
+  finishDelivery(saved);
 
   e.target.reset();
   draft = { svc:'', prio:'', shots:[] };
@@ -486,7 +489,7 @@ function renderList() {
       <span class="ic" style="background:${c.tint};color:${c.ink}">${svg(iconOf(s))}</span>
       <span class="t">${esc(C(s,'name'))} ${esc(T('lbl.building'))} ${num(esc(r.block))} / ${esc(T('lbl.flat'))} ${num(esc(r.flat))}</span>
       <span class="s">${esc(r.no)} · ${num(fmtDate(d))}</span>
-      ${stageChip(r.stage)}</button>`;
+      ${stageChip(r.stage)}</button>${r.stage >= 3 && !r.rating ? `<button class="rate-cta" type="button" data-rate="${esc(r.no)}">\u2605 ${esc(T('rate.btn'))}</button>` : ''}`;
   }).join('');
 }
 
@@ -616,6 +619,9 @@ function renderAdmin() {
   if (adminTab === 'content')   box.innerHTML = admContent();
   if (adminTab === 'lock')      box.innerHTML = admLock();
   if (adminTab === 'publish')   box.innerHTML = admPublish();
+  if (adminTab === 'tech')      box.innerHTML = admTech();
+  if (adminTab === 'backend')   box.innerHTML = admBackend();
+  if (adminTab === 'archive')   { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admArchive(box); }
 }
 
 function admServices() {
@@ -767,6 +773,98 @@ function admPublish() {
     <button class="btn btn-quiet btn-block mt" type="button" data-act="logout">🔒 قفل لوحة الإدارة</button>`;
 }
 
+
+
+/* ── admin: technicians ── */
+function admTech() {
+  const list = CFG.technicians || [];
+  return `<p class="fine mb">${esc(T('adm.techHint'))}</p>
+  <div class="adm-list">
+    ${list.map((t, i) => `<div class="adm-item tech">
+      <input class="adm-name" value="${esc(t.name)}" data-tk="name" data-i="${i}" aria-label="${esc(T('set.name'))}">
+      <input class="adm-tel ltr" value="${esc(t.phone || '')}" data-tk="phone" data-i="${i}" inputmode="tel" placeholder="201012345678">
+      <input class="adm-pin ltr" value="${esc(t.pin || '')}" data-tk="pin" data-i="${i}" inputmode="numeric" placeholder="${esc(T('adm.pin'))}">
+      <div class="trades">${CFG.services.map((sv) => `
+        <button type="button" class="trade ${(t.svcs||[]).indexOf(sv.id)>-1?'on':''}" data-trade="${esc(sv.id)}" data-i="${i}">${esc(C(sv,'name'))}</button>`).join('')}</div>
+      <div class="adm-ops"><button type="button" data-act="tdel" data-i="${i}" class="dl" aria-label="${esc(T('a11y.del'))}">\u2715</button></div>
+    </div>`).join('')}
+  </div>
+  <button class="btn btn-quiet btn-block mt" type="button" data-act="addtech">${esc(T('adm.addTech'))}</button>`;
+}
+
+/* ── admin: server + export + QR ── */
+function admBackend() {
+  const on = DB.ready();
+  const b = CFG.backend || {};
+  const today = new Date().toISOString().slice(0, 10);
+  const monthAgo = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+  return `
+    <div class="note-box ${on ? 'ok' : 'warn'}">
+      <b>${esc(T(on ? 'adm.beOn' : 'adm.beOff'))}</b>
+      <p>${esc(T('adm.beHint'))}</p>
+    </div>
+    <label class="fld"><span>Project URL</span>
+      <input class="ltr" data-c="backend.url" value="${esc(b.url || '')}" placeholder="https://xxxx.supabase.co"></label>
+    <label class="fld"><span>anon public key</span>
+      <textarea class="ltr" data-c="backend.key" rows="3" placeholder="eyJhbGciOi...">${esc(b.key || '')}</textarea></label>
+    <button class="btn btn-quiet btn-block" type="button" data-act="betest">${esc(T('adm.beTest'))}</button>
+
+    <h4 class="adm-h">${esc(T('exp.title'))}</h4>
+    <div class="grid-2">
+      <label class="fld"><span>${esc(T('exp.from'))}</span><input type="date" id="expFrom" value="${monthAgo}"></label>
+      <label class="fld"><span>${esc(T('exp.to'))}</span><input type="date" id="expTo" value="${today}"></label>
+    </div>
+    <button class="btn btn-primary btn-block mt" type="button" data-act="export">${esc(T('exp.go'))}</button>
+
+    <h4 class="adm-h">${esc(T('adm.qr'))}</h4>
+    <p class="fine mb">${esc(T('adm.qrHint'))}</p>
+    <div class="qr-row">
+      <input id="qrBlock" inputmode="numeric" placeholder="${esc(T('new.block'))}" value="1">
+      <button class="btn btn-quiet" type="button" data-act="qr">${esc(T('adm.qr'))}</button>
+    </div>
+    <div id="qrBox" class="qr-box"></div>`;
+}
+
+/* ── admin: archive ── */
+async function admArchive(box) {
+  let rows = [];
+  if (DB.ready()) {
+    try { rows = (await DB.allRequests(300)).map(fromRow); }
+    catch (e) { box.innerHTML = `<div class="note-box warn"><b>${esc(T('err.net'))}</b></div>`; return; }
+  } else {
+    rows = requests.slice();
+  }
+
+  const counts = [0,1,2,3,4].map((i) => rows.filter((r) => (r.stage|0) === i).length);
+  const rated = rows.filter((r) => r.rating);
+  const avg = rated.length ? (rated.reduce((a, r) => a + r.rating, 0) / rated.length).toFixed(1) : '\u2014';
+
+  box.innerHTML = `
+    <p class="fine mb">${esc(T('adm.archHint'))}</p>
+    <div class="arch-stats">
+      <div><b>${num(rows.length)}</b><span>${esc(T('foot.requests'))}</span></div>
+      <div><b>${num(counts[0] + counts[1] + counts[2])}</b><span>${esc(T('list.open'))}</span></div>
+      <div><b>${num(counts[3] + counts[4])}</b><span>${esc(T('home.cDone'))}</span></div>
+      <div><b>${avg}</b><span>${esc(T('exp.rating'))}</span></div>
+    </div>
+    <button class="btn btn-quiet btn-block mt" type="button" data-act="archref">${esc(T('adm.refresh'))}</button>
+    <div class="arch-list">
+      ${rows.slice(0, 80).map((r) => {
+        const sv = svcById(r.svc), c = colorOf(sv);
+        const t = techById(r.tech_id);
+        return `<div class="arch" data-p="${esc(r.prio)}">
+          <span class="ic" style="background:${c.tint};color:${c.ink}">${svg(iconOf(sv))}</span>
+          <div class="arch-t">
+            <b>${esc(C(sv,'name'))} \u00b7 ${esc(T('lbl.building'))} ${num(esc(r.block))}/${num(esc(r.flat))}</b>
+            <span>${esc(r.no)} \u00b7 ${esc(new Date(r.at).toLocaleDateString(locale()))}${r.tech_name ? ' \u00b7 ' + esc(r.tech_name) : ''}</span>
+          </div>
+          ${stageChip(r.stage)}
+          ${t && t.phone ? `<a class="arch-wa" href="${waLink(String(t.phone).replace(/\D/g,''), techText(r))}" target="_blank" rel="noopener" title="${esc(T('tech.notify'))}">\u2709</a>` : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
 /* ── admin: one delegated handler for the whole panel ── */
 function initAdmin() {
   $('#admTabs').addEventListener('click', (e) => {
@@ -807,6 +905,25 @@ function initAdmin() {
       toast(T(CFG.locked ? 'adm.lockedLocal' : 'adm.openedLocal'));
     }
 
+    if (act === 'addtech') { (CFG.technicians = CFG.technicians || []).push({ id: uid(), name: T('adm.newTech'), phone: '', pin: '0000', svcs: [] }); }
+    if (act === 'tdel')    { if (!confirm(T('adm.delAsk') + ' \u00ab' + CFG.technicians[i].name + '\u00bb\u061f')) return; CFG.technicians.splice(i, 1); }
+    if (b.dataset.trade) {
+      const t2 = CFG.technicians[i];
+      t2.svcs = t2.svcs || [];
+      const k = t2.svcs.indexOf(b.dataset.trade);
+      if (k > -1) t2.svcs.splice(k, 1); else t2.svcs.push(b.dataset.trade);
+      saveDraft(); renderAdmin(); return;
+    }
+    if (act === 'betest') {
+      DB.init(CFG);
+      DB.req('requests?select=no&limit=1')
+        .then(() => { toast(T('adm.beOn')); paintFooter(); renderAdmin(); })
+        .catch(() => toast(T('err.net')));
+      return;
+    }
+    if (act === 'export')  { exportRange($('#expFrom').value, $('#expTo').value); return; }
+    if (act === 'archref') { renderAdmin(); return; }
+    if (act === 'qr')      { drawQR($('#qrBlock').value.trim() || '1'); return; }
     if (act === 'download') { downloadConfig(); return; }
     if (act === 'copy')     { copyConfig(); return; }
     if (act === 'revert') {
@@ -826,7 +943,7 @@ function initAdmin() {
       return;
     }
 
-    if (act !== 'download' && act !== 'copy') saveDraft();
+    if (['download','copy','betest','export','archref','qr'].indexOf(act) < 0) saveDraft();
     renderAll();
     renderAdmin();
   });
@@ -836,6 +953,7 @@ function initAdmin() {
     const t = e.target;
     const i = Number(t.dataset.i);
     if (t.dataset.k)    CFG.services[i][t.dataset.k] = t.value;
+    else if (t.dataset.tk) CFG.technicians[i][t.dataset.tk] = t.value;
     else if (t.dataset.lk) CFG.lines[i][t.dataset.lk] = t.value;
     else if (t.dataset.list) CFG[t.dataset.list] = t.value.split('\n').map((x) => x.trim()).filter(Boolean);
     else if (t.dataset.c) {
@@ -934,6 +1052,7 @@ function initInstallUI() {
 /* ══════════ global wiring ══════════ */
 function renderAll() {
   applyI18n();
+  if (typeof paintFooter === 'function' && CFG) paintFooter();
   renderBrand();
   renderServices();
   renderSelects();
@@ -1018,6 +1137,97 @@ function initEvents() {
   });
 }
 
+
+
+/* ══════════ delivery: archive first, then WhatsApp ══════════ */
+async function finishDelivery(r) {
+  const res = await deliver(r);
+
+  if (res.tech) {
+    r.tech_id = res.tech.id;
+    r.tech_name = res.tech.name;
+    if (res.archived) r.stage = 1;
+    store.set('requests', requests);
+  }
+
+  const box = $('#sendBox');
+  const extra = [];
+
+  if (res.archived) {
+    extra.push(`<p class="sent-ok">\u2713 ${esc(T('foot.synced'))}${res.tech ? ' \u00b7 ' + esc(res.tech.name) : ''}</p>`);
+  } else if (!DB.ready()) {
+    extra.push(`<p class="sent-warn">${esc(T('foot.local'))}</p>`);
+  } else {
+    extra.push(`<p class="sent-warn">${esc(T('foot.queued').replace('{n}', num(1)))}</p>`);
+  }
+
+  const note = box.querySelector('.sent-state');
+  if (note) note.remove();
+  const div = document.createElement('div');
+  div.className = 'sent-state';
+  div.innerHTML = extra.join('');
+  box.insertBefore(div, box.firstChild);
+
+  /* the admin's WhatsApp copy, sent automatically when a number is set */
+  const wa = ADMIN_WA();
+  if (wa && CFG.intake.autoSend !== false) {
+    setTimeout(() => {
+      window.open(waLink(wa, requestText(r)), '_blank', 'noopener');
+    }, 700);
+  }
+
+  paintFooter();
+  renderCounters();
+}
+
+/* ══════════ technician wiring ══════════ */
+function initTech() {
+  const saved = sessionStorage.getItem('nawah.tech');
+  if (saved) {
+    const t = techById(saved);
+    if (t) { TECH = t; $('#techTab').hidden = false; document.body.classList.add('is-tech'); }
+  }
+  $('#techGo').addEventListener('click', techLogin);
+  $('#techPin').addEventListener('keydown', (e) => { if (e.key === 'Enter') techLogin(); });
+  $('#rateGo').addEventListener('click', sendRate);
+
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-adv]');
+    if (a) { advance(a.dataset.adv, Number(a.dataset.stage)); return; }
+    const st = e.target.closest('[data-star]');
+    if (st) { rateStars = Number(st.dataset.star); paintStars(); return; }
+    const rb = e.target.closest('[data-rate]');
+    if (rb) { askRate(rb.dataset.rate); return; }
+  });
+}
+
+/* ══════════ boot additions ══════════ */
+async function bootExtras() {
+  DB.init(CFG);
+
+  const sent = await QUEUE.flush();
+  if (sent) toast(T('foot.synced'));
+
+  /* ?block=14 from a building QR code */
+  const qBlock = new URLSearchParams(location.search).get('block');
+  if (qBlock) {
+    profile.block = qBlock;
+    store.set('profile', profile);
+    $('#fBlock').value = qBlock;
+  }
+
+  initTech();
+  paintFooter();
+
+  /* live updates for the admin and technician views */
+  if (DB.ready()) {
+    DB.live(() => {
+      if (!$('#v-tech').hidden) renderTech();
+      if (!$('#v-admin').hidden && adminTab === 'archive') renderAdmin();
+    });
+  }
+}
+
 /* ══════════ boot ══════════ */
 (async function boot() {
   if (!(await loadConfig())) return;
@@ -1045,6 +1255,8 @@ function initEvents() {
 
   const wanted = new URLSearchParams(location.search).get('go');
   go(VIEWS.indexOf(wanted) > -1 ? wanted : 'home');
+
+  await bootExtras();
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

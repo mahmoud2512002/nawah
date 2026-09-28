@@ -1,11 +1,15 @@
 /* نواة المستقبل — service worker
    app shell cached for offline use inside the compound. */
-const VERSION = 'nawah-v1';
+const VERSION = 'nawah-v2';
 const SHELL = [
   './',
   './index.html',
   './app.css',
   './app.js',
+  './i18n.js',
+  './backend.js',
+  './features.js',
+  './config.json',
   './manifest.webmanifest',
   './logo.png',
   './icons/icon-192.png',

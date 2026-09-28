@@ -249,7 +249,8 @@
   "intake": {
     "whatsapp": "",
     "email": "",
-    "note": "رقم واتساب إدارة الصيانة بصيغة دولية بدون + مثل 201012345678"
+    "note": "رقم واتساب إدارة الصيانة بصيغة دولية بدون + مثل 201012345678",
+    "autoSend": true
   },
   "areas_en": [
     "Residential zone A",
@@ -294,5 +295,44 @@
       "en",
       "ru"
     ]
-  }
+  },
+  "backend": {
+    "url": "",
+    "key": "",
+    "note": "Supabase Project URL + anon public key"
+  },
+  "technicians": [
+    {
+      "id": "t1",
+      "name": "محمد عبدالله",
+      "phone": "",
+      "pin": "1111",
+      "svcs": [
+        "plumb",
+        "sewer"
+      ]
+    },
+    {
+      "id": "t2",
+      "name": "أحمد سعيد",
+      "phone": "",
+      "pin": "2222",
+      "svcs": [
+        "elec",
+        "ac"
+      ]
+    }
+  ],
+  "announcements": [
+    {
+      "id": "a1",
+      "date": "",
+      "title": "",
+      "title_en": "",
+      "title_ru": "",
+      "body": "",
+      "body_en": "",
+      "body_ru": ""
+    }
+  ]
 }

@@ -321,6 +321,9 @@
         <button class="chip on" data-tab="services" type="button" data-t="adm.tServices">الخدمات</button>
         <button class="chip" data-tab="lines" type="button" data-t="adm.tLines">الأرقام</button>
         <button class="chip" data-tab="content" type="button" data-t="adm.tContent">النصوص</button>
+        <button class="chip" data-tab="tech" type="button" data-t="adm.tTech">الفنيين</button>
+        <button class="chip" data-tab="archive" type="button" data-t="adm.tArchive">الأرشيف</button>
+        <button class="chip" data-tab="backend" type="button" data-t="adm.tBackend">السيرفر</button>
         <button class="chip" data-tab="lock" type="button" data-t="adm.tLock">القفل</button>
         <button class="chip" data-tab="publish" type="button" data-t="adm.tPublish">نشر</button>
       </div>
@@ -328,6 +331,28 @@
       <div class="card adm-card" id="admBody"></div>
     </section>
 
+
+    <!-- ══════════ TECHNICIAN ══════════ -->
+    <section class="view" id="v-tech" hidden>
+      <div class="vhead">
+        <button class="back" data-go="home" type="button" data-ta="a11y.back">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <h2 data-t="tech.title">مهامي</h2>
+        <span class="tech-who" id="techWho"></span>
+      </div>
+      <div id="techBody"></div>
+    </section>
+
+    <footer class="site-foot">
+      <div class="foot-stats">
+        <div><b id="fVisits">—</b><span data-t="foot.visits">زائر</span></div>
+        <i></i>
+        <div><b id="fReqs">—</b><span data-t="foot.requests">طلب</span></div>
+      </div>
+      <p class="foot-name" id="fName"></p>
+      <p class="foot-sync" id="fSync"></p>
+    </footer>
   </main>
 
   <nav class="tabbar" id="tabbar" aria-label="التنقل">
@@ -346,6 +371,10 @@
     <button class="tab" data-go="emergency" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.6 2.4 21h19.2L12 2.6Z"/><path d="M12 9.4v5M12 17.6v.1"/></svg>
       <span data-t="nav.emergency">طوارئ</span>
+    </button>
+    <button class="tab" data-go="tech" type="button" id="techTab" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4.5 4.5 0 0 1-5.9 5.9L4 17l3 3 4.8-4.8a4.5 4.5 0 0 1 5.9-5.9l-2.6 2.6"/><path d="m14.7 6.3 3-3 3 3-3 3"/></svg>
+      <span data-t="nav.tech">مهامي</span><i class="dot" id="techDot" hidden></i>
     </button>
     <button class="tab" data-go="admin" type="button" id="adminTab" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 2.8 20 6v6c0 4.6-3.3 7.7-8 9.2C7.3 19.7 4 16.6 4 12V6l8-3.2Z"/><path d="m9 12 2.2 2.2L15.4 10"/></svg>
@@ -408,9 +437,41 @@
   </div>
 </div>
 
+
+<!-- technician login -->
+<div class="sheet-wrap" id="techSheet" hidden>
+  <div class="sheet-bg" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true">
+    <span class="grip" aria-hidden="true"></span>
+    <h3 data-t="tech.login">دخول الفني</h3>
+    <p class="fine center" data-t="tech.loginHint">اختر اسمك واكتب الرقم السري.</p>
+    <label class="fld"><select id="techPick"></select></label>
+    <label class="fld"><input id="techPin" type="password" inputmode="numeric" class="pass-in" placeholder="••••"></label>
+    <p class="err center" id="techErr" hidden data-t="pass.err">كلمة المرور غير صحيحة</p>
+    <button class="btn btn-primary btn-block" id="techGo" type="button" data-t="pass.go">دخول</button>
+    <button class="btn btn-quiet btn-block" data-close type="button" data-t="cancel">إلغاء</button>
+  </div>
+</div>
+
+<!-- rating -->
+<div class="sheet-wrap" id="rateSheet" hidden>
+  <div class="sheet-bg" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true">
+    <span class="grip" aria-hidden="true"></span>
+    <h3 data-t="rate.title">قيّم الخدمة</h3>
+    <p class="fine center" data-t="rate.hint">رأيك بيساعدنا نحسّن الخدمة.</p>
+    <div class="stars" id="stars"></div>
+    <label class="fld"><textarea id="rateNote" rows="2" data-tp="rate.notePh"></textarea></label>
+    <button class="btn btn-primary btn-block" id="rateGo" type="button" data-t="rate.send">إرسال التقييم</button>
+    <button class="btn btn-quiet btn-block" data-close type="button" data-t="cancel">إلغاء</button>
+  </div>
+</div>
+
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="i18n.js"></script>
+<script src="backend.js"></script>
+<script src="features.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
