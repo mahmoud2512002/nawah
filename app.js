@@ -206,7 +206,14 @@ async function loadConfig() {
   store.set('cfgCache', remote);
   REMOTE = remote;
 
-  const localDraft = store.get('cfgDraft', null);
+  let localDraft = store.get('cfgDraft', null);
+
+  /* التعديلات اتنشرت خلاص؟ امسح المسودة وسيب المنشور هو الأصل */
+  if (localDraft && Number(remote.version || 0) >= Number(localDraft.version || 0)) {
+    store.del('cfgDraft');
+    localDraft = null;
+  }
+
   CFG = localDraft ? deepMerge(clone(remote), localDraft) : clone(remote);
   return true;
 }
@@ -220,6 +227,7 @@ function deepMerge(base, over) {
   return base;
 }
 function saveDraft() {
+  CFG.version = Number((REMOTE && REMOTE.version) || 0) + 1;
   store.set('cfgDraft', CFG);
   $('#pubDot') && ($('#pubDot').hidden = false);
 }
@@ -982,7 +990,7 @@ function openEdit(i, toggle) {
 
 function configJSON() {
   const out = clone(CFG);
-  out.version = (REMOTE.version || 1) + (hasDraft() ? 1 : 0);
+  out.version = Number((REMOTE && REMOTE.version) || 0) + 1;
   return JSON.stringify(out, null, 2);
 }
 
@@ -1272,6 +1280,27 @@ async function bootExtras() {
   await bootExtras();
 
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    window.addEventListener('load', async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('sw.js');
+        reg.addEventListener('updatefound', () => {
+          const sw = reg.installing;
+          if (!sw) return;
+          sw.addEventListener('statechange', () => {
+            /* نسخة جديدة جاهزة وفيه نسخة قديمة شغالة → حدّث مرة واحدة */
+            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+              sw.postMessage('skip-waiting');
+            }
+          });
+        });
+        let reloaded = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (reloaded) return;
+          reloaded = true;
+          location.reload();
+        });
+        reg.update();
+      } catch (e) {}
+    });
   }
 })();
