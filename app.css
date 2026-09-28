@@ -1133,3 +1133,15 @@ body.is-admin .tabbar{ grid-template-columns:repeat(6,1fr); }
 body.is-tech .tabbar{ grid-template-columns:repeat(6,1fr); }
 body.is-tech.is-admin .tabbar{ grid-template-columns:repeat(7,1fr); }
 body.is-tech .tab span, body.is-admin .tab span{ font-size:9px; }
+
+/* ── إصلاح تجاوز العرض في اللغات الطويلة (إنجليزي/روسي) ── */
+.hero-cta{ flex-wrap:wrap; }
+.hero-cta .btn{ min-width:0; }
+.hero-cta .btn-primary{ flex:1 1 200px; }
+.hero-cta .btn-quiet{ flex:0 1 auto; }
+.btn span{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.install-copy strong, .install-copy span{ overflow-wrap:anywhere; }
+.counter span{ overflow-wrap:anywhere; hyphens:auto; }
+.tab span{ max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.track-row{ flex-wrap:wrap; }
+.track-row input{ flex:1 1 160px; }
