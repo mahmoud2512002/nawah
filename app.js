@@ -124,7 +124,8 @@ function applyI18n() {
   const L = LANGS[LANG];
   document.documentElement.lang = LANG;
   document.documentElement.dir = L.dir;
-  document.title = C(CFG && CFG.brand, 'company') + ' \u2014 ' + T('app.title').split('\u2014').pop().trim();
+  const co = C(CFG && CFG.brand, 'company');
+  document.title = co ? co + ' \u2014 ' + C(CFG.brand, 'tagline') : T('app.title');
 
   document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = T(el.dataset.t); });
   document.querySelectorAll('[data-tp]').forEach((el) => { el.placeholder = T(el.dataset.tp); });
@@ -138,41 +139,62 @@ function setLang(code, silent) {
   if (!LANGS[code]) code = 'ar';
   LANG = code;
   store.set('lang', code);
+
   applyI18n();
+  paintLangMenu();
   renderAll();
+
+  /* أعد رسم الشاشة المفتوحة بنفس محتواها */
   const open = VIEWS.find((v) => { const el = $('#v-' + v); return el && !el.hidden; });
-  if (open === 'detail') { /* re-render with the last request */ }
-  if (open) go(open);
+  if (open) go(open, open === 'detail' ? lastDetail : undefined);
+
   if (!silent) toast(LANGS[code].name);
 }
 
-function initLangMenu() {
+/* ── قائمة اللغات ───────────────────────────────────────
+   الرسم منفصل عن الربط: الأزرار بتتربط مرة واحدة بس عند
+   الإقلاع، والقائمة بترسم من جديد بعد كل تبديل.          */
+
+function paintLangMenu() {
   const enabled = (CFG.langs && CFG.langs.enabled) || ['ar', 'en', 'ru'];
   $('#langMenu').innerHTML = enabled.map((code) => `
     <button class="lang-op ${code === LANG ? 'on' : ''}" type="button" role="menuitem" data-lang="${code}">
       <em>${LANGS[code].flag}</em><span>${LANGS[code].name}</span>
     </button>`).join('');
+}
+
+function closeLangMenu() {
+  const m = $('#langMenu');
+  if (!m || m.hidden) return;
+  m.hidden = true;
+  $('#btnLang').setAttribute('aria-expanded', 'false');
+}
+
+let langWired = false;
+
+function initLangMenu() {
+  paintLangMenu();
+  if (langWired) return;           // الربط مرة واحدة فقط
+  langWired = true;
 
   $('#btnLang').addEventListener('click', (e) => {
     e.stopPropagation();
     const m = $('#langMenu');
-    m.hidden = !m.hidden;
-    $('#btnLang').setAttribute('aria-expanded', String(!m.hidden));
+    const open = m.hidden;
+    m.hidden = !open;
+    $('#btnLang').setAttribute('aria-expanded', String(open));
   });
 
   $('#langMenu').addEventListener('click', (e) => {
+    e.stopPropagation();
     const b = e.target.closest('[data-lang]');
     if (!b) return;
-    $('#langMenu').hidden = true;
-    $('#btnLang').setAttribute('aria-expanded', 'false');
+    closeLangMenu();
     setLang(b.dataset.lang);
-    initLangMenu();
   });
 
-  document.addEventListener('click', () => {
-    const m = $('#langMenu');
-    if (m && !m.hidden) { m.hidden = true; $('#btnLang').setAttribute('aria-expanded', 'false'); }
-  });
+  document.addEventListener('click', closeLangMenu);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLangMenu(); });
 }
 
 function detectLang() {
@@ -195,6 +217,7 @@ let requests   = store.get('requests', []);
 let profile    = store.get('profile', {});
 let draft      = { svc:'', prio:'', shots:[] };
 let listFilter = 'all';
+let lastDetail = null;
 let isAdmin    = sessionStorage.getItem('nawah.admin') === '1';
 let ADMIN_PIN  = sessionStorage.getItem('nawah.pin') || '';
 
@@ -258,7 +281,7 @@ function renderLock() {
 }
 
 /* ══════════ navigation ══════════ */
-const VIEWS = ['home', 'new', 'list', 'detail', 'emergency', 'settings', 'admin', 'tech'];
+const VIEWS = ['home', 'new', 'list', 'detail', 'emergency', 'settings', 'admin', 'tech', 'cm'];
 
 function go(name, arg) {
   if (name === 'admin' && !isAdmin) { askPassword(); return; }
@@ -273,6 +296,7 @@ function go(name, arg) {
   if (name === 'settings')  renderSettings();
   if (name === 'admin')     renderAdmin();
   if (name === 'tech')      renderTech();
+  if (name === 'cm')        loadComments();
   if (name === 'home')      renderCounters();
 
   const v = $('#v-' + name);
@@ -514,8 +538,9 @@ function renderList() {
 
 /* ══════════ detail ══════════ */
 function renderDetail(no) {
-  const r = requests.find((x) => x.no === no) || requests[0];
+  const r = requests.find((x) => x.no === no) || requests.find((x) => x.no === lastDetail) || requests[0];
   if (!r) { go('list'); return; }
+  lastDetail = r.no;
   const s = svcById(r.svc), d = new Date(r.at), p = CFG.priorities[r.prio] || CFG.priorities.normal;
 
   const timeline = Array.from({length: STAGE_COUNT}, (_, i) => stageT(i)).map((st, i) => {
@@ -867,7 +892,7 @@ async function admArchive(box) {
   const avg = rated.length ? (rated.reduce((a, r) => a + r.rating, 0) / rated.length).toFixed(1) : '\u2014';
 
   box.innerHTML = `
-    <p class="fine mb">${esc(T('adm.archHint'))}</p>
+    <p class="fine mb">${esc(T('adm.archHint'))} ${esc(T('adm.stageCtl'))}</p>
     <div class="arch-stats">
       <div><b>${num(rows.length)}</b><span>${esc(T('foot.requests'))}</span></div>
       <div><b>${num(counts[0] + counts[1] + counts[2])}</b><span>${esc(T('list.open'))}</span></div>
@@ -885,7 +910,7 @@ async function admArchive(box) {
             <b>${esc(C(sv,'name'))} \u00b7 ${esc(T('lbl.building'))} ${num(esc(r.block))}/${num(esc(r.flat))}</b>
             <span>${esc(r.no)} \u00b7 ${esc(new Date(r.at).toLocaleDateString(locale()))}${r.tech_name ? ' \u00b7 ' + esc(r.tech_name) : ''}</span>
           </div>
-          ${stageChip(r.stage)}
+          ${stageSelect(r)}
           ${t && t.phone ? `<a class="arch-wa" href="${waLink(String(t.phone).replace(/\D/g,''), techText(r))}" target="_blank" rel="noopener" title="${esc(T('tech.notify'))}">\u2709</a>` : ''}
         </div>`;
       }).join('')}
@@ -1266,6 +1291,7 @@ async function bootExtras() {
   }
 
   initTech();
+  initCommunity();
   paintFooter();
   renderAnn();
   startPolling();

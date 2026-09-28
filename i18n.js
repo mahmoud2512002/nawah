@@ -122,6 +122,37 @@ const I18N = {
   'adm.lockSlowT':   { ar:'القفل الفوري غير مُفعّل', en:'Instant lock not enabled', ru:'Мгновенная блокировка не включена' },
   'adm.lockSlowB':   { ar:'شغّل ملف lock-feature.sql في Supabase عشان القفل يبقى فوري. من غيره لازم تنشر وتستنى دقيقة.', en:'Run lock-feature.sql in Supabase to make locking instant. Without it you must publish and wait a minute.', ru:'Выполните lock-feature.sql в Supabase для мгновенной блокировки.' },
 
+
+  /* ── tracking & community ── */
+  'nav.cm':        { ar:'الآراء', en:'Reviews', ru:'Отзывы' },
+  'track.title':   { ar:'تتبّع طلبك', en:'Track your request', ru:'Отследить заявку' },
+  'track.hint':    { ar:'اكتب رقم الطلب وشوف وصل لحد فين', en:'Enter the request number to see where it stands', ru:'Введите номер заявки' },
+  'track.ph':      { ar:'مثال: NW-2809-0001', en:'e.g. NW-2809-0001', ru:'напр. NW-2809-0001' },
+  'track.go':      { ar:'بحث', en:'Search', ru:'Найти' },
+  'track.none':    { ar:'مفيش طلب بالرقم ده', en:'No request with that number', ru:'Заявка не найдена' },
+  'track.noneB':   { ar:'راجع الرقم زي ما وصلك بالظبط.', en:'Check the number exactly as you received it.', ru:'Проверьте номер.' },
+
+  'cm.title':      { ar:'آراء السكان', en:'Resident reviews', ru:'Отзывы жильцов' },
+  'cm.lede':       { ar:'رأيك بيظهر لكل السكان وبيساعدنا نحسّن الخدمة.', en:'Your review is visible to every resident and helps us improve.', ru:'Ваш отзыв виден всем жильцам.' },
+  'cm.name':       { ar:'اسمك', en:'Your name', ru:'Ваше имя' },
+  'cm.block':      { ar:'العمارة (اختياري)', en:'Building (optional)', ru:'Дом (необяз.)' },
+  'cm.body':       { ar:'رأيك أو ملاحظتك', en:'Your review or note', ru:'Ваш отзыв' },
+  'cm.bodyPh':     { ar:'اكتب رأيك في الخدمة…', en:'Write your thoughts about the service…', ru:'Напишите ваше мнение…' },
+  'cm.send':       { ar:'نشر الرأي', en:'Post review', ru:'Опубликовать' },
+  'cm.fill':       { ar:'اكتب اسمك ورأيك', en:'Enter your name and review', ru:'Введите имя и отзыв' },
+  'cm.thanks':     { ar:'شكراً — رأيك اتنشر', en:'Thanks — your review is posted', ru:'Спасибо — отзыв опубликован' },
+  'cm.empty':      { ar:'مفيش آراء لسه', en:'No reviews yet', ru:'Отзывов пока нет' },
+  'cm.emptyB':     { ar:'كن أول واحد يكتب رأيه.', en:'Be the first to write one.', ru:'Будьте первым.' },
+  'cm.from':       { ar:'من {n} تقييم', en:'from {n} ratings', ru:'из {n} оценок' },
+  'cm.off':        { ar:'محتاج اتصال بالسيرفر', en:'Needs a server connection', ru:'Нужно подключение' },
+  'cm.needSql':    { ar:'شغّل ملف comments.sql في Supabase الأول', en:'Run comments.sql in Supabase first', ru:'Сначала выполните comments.sql' },
+  'cm.hide':       { ar:'إخفاء', en:'Hide', ru:'Скрыть' },
+  'cm.show':       { ar:'إظهار', en:'Show', ru:'Показать' },
+  'cm.reply':      { ar:'رد', en:'Reply', ru:'Ответить' },
+  'cm.replyAsk':   { ar:'رد الإدارة:', en:'Management reply:', ru:'Ответ администрации:' },
+  'cm.replyBy':    { ar:'رد الإدارة', en:'Management reply', ru:'Ответ администрации' },
+  'adm.stageCtl':  { ar:'غيّر المرحلة من القائمة قدام كل طلب — الساكن يشوف التحديث فوراً.', en:'Change a stage from the dropdown next to each request — the resident sees it instantly.', ru:'Меняйте этап в списке рядом с заявкой.' },
+
   /* ── shell ─────────────────────────────────────────── */
   'app.title':        { ar:'نواة المستقبل — خدمات الضبعة', en:'Nawah — El-Dabaa Services', ru:'Нава — Услуги Эль-Дабаа' },
   'nav.home':         { ar:'الرئيسية',      en:'Home',      ru:'Главная' },

@@ -9,7 +9,7 @@
      • من غير نت                  →  آخر نسخة متخزنة تشتغل عادي
    ══════════════════════════════════════════════════════════════ */
 
-const VERSION = 'nawah-v4';
+const VERSION = 'nawah-v5';
 
 /* يتخزنوا من أول زيارة عشان الشغل بدون إنترنت */
 const SHELL = [
@@ -21,6 +21,7 @@ const SHELL = [
   './backend.js',
   './features.js',
   './extra.js',
+  './community.js',
   './config.json',
   './manifest.webmanifest',
   './logo.png',
