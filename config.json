@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "locked": false,
   "lockTitle": "الموقع مغلق مؤقتاً",
   "lockMessage": "جاري تحديث الخدمة. برجاء المحاولة لاحقاً أو التواصل مع إدارة الشركة.",
@@ -297,9 +297,9 @@
     ]
   },
   "backend": {
-    "url": "",
-    "key": "",
-    "note": "Supabase Project URL + anon public key"
+    "url": "https://nhyiukzvlrjbnveiwhfw.supabase.co",
+    "key": "sb_publishable_LUchxzRyHOeJ95zUPP0S8A_vFilEJ84",
+    "note": "Supabase Project URL + publishable key"
   },
   "technicians": [
     {
