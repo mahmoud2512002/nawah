@@ -196,6 +196,7 @@ let profile    = store.get('profile', {});
 let draft      = { svc:'', prio:'', shots:[] };
 let listFilter = 'all';
 let isAdmin    = sessionStorage.getItem('nawah.admin') === '1';
+let ADMIN_PIN  = sessionStorage.getItem('nawah.pin') || '';
 
 const svcById = (id) => (CFG.services.find((s) => s.id === id)) || CFG.services[CFG.services.length - 1] || { name:'خدمة', icon:'gear', color:'grey' };
 const telOf   = (l) => String(l.tel || '').trim();
@@ -620,7 +621,9 @@ async function tryPassword() {
     return;
   }
   isAdmin = true;
+  ADMIN_PIN = $('#passInput').value.trim();
   sessionStorage.setItem('nawah.admin', '1');
+  sessionStorage.setItem('nawah.pin', ADMIN_PIN);
   $('#passErr').hidden = true;
   $('#passSheet').hidden = true;
   $('#lockScreen').hidden = true;
@@ -925,8 +928,20 @@ function initAdmin() {
     if (act === 'addline') CFG.lines.push({ id: uid(), name: T('adm.newLine'), desc: '', tel: '' });
 
     if (act === 'togglelock') {
-      CFG.locked = !CFG.locked;
-      toast(T(CFG.locked ? 'adm.lockedLocal' : 'adm.openedLocal'));
+      const want = !CFG.locked;
+      if (DB.ready()) {
+        DB.setLock(want, ADMIN_PIN)
+          .then(() => {
+            CFG.locked = want;
+            saveDraft();
+            toast(T(want ? 'adm.lockedNow2' : 'adm.openedNow2'));
+            renderAdmin();
+          })
+          .catch(() => toast(T('adm.lockFail')));
+        return;
+      }
+      CFG.locked = want;
+      toast(T(want ? 'adm.lockedLocal' : 'adm.openedLocal'));
     }
 
     if (act === 'addann')  { (CFG.announcements = CFG.announcements || []).push({ id: uid(), date: '', title: '', body: '' }); }
@@ -962,7 +977,9 @@ function initAdmin() {
     }
     if (act === 'logout') {
       isAdmin = false;
+      ADMIN_PIN = '';
       sessionStorage.removeItem('nawah.admin');
+      sessionStorage.removeItem('nawah.pin');
       $('#adminTab').hidden = true;
       document.body.classList.remove('is-admin');
       if (CFG.locked) { renderLock(); return; }
@@ -1285,6 +1302,11 @@ async function bootExtras() {
   const hash = location.hash.replace('#', '');
   if (hash === 'admin') { isAdmin ? go('admin') : askPassword(); }
 
+  /* القفل الفوري من قاعدة البيانات له الأولوية على الملف */
+  if (DB.init(CFG)) {
+    const remoteLock = await DB.isLocked();
+    if (remoteLock !== null) CFG.locked = remoteLock;
+  }
   if (CFG.locked && !isAdmin) { renderLock(); return; }
 
   const wanted = new URLSearchParams(location.search).get('go');

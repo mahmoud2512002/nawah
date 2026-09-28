@@ -112,6 +112,16 @@ const I18N = {
   'notif.jobT':    { ar:'مهمة جديدة', en:'New job', ru:'Новая задача' },
   'notif.stageT':  { ar:'تحديث لطلب', en:'Update on', ru:'Обновление' },
 
+
+  /* ── instant lock ── */
+  'adm.lockedNow2':  { ar:'تم القفل فوراً — الموقع مقفول عند الكل دلوقتي', en:'Locked instantly — the site is now closed for everyone', ru:'Заблокировано — сайт закрыт для всех' },
+  'adm.openedNow2':  { ar:'تم الفتح فوراً — الموقع شغال', en:'Unlocked instantly — the site is open', ru:'Разблокировано — сайт открыт' },
+  'adm.lockFail':    { ar:'فشل القفل — شغّل lock-feature.sql الأول', en:'Lock failed — run lock-feature.sql first', ru:'Ошибка — сначала выполните lock-feature.sql' },
+  'adm.lockInstantT':{ ar:'القفل فوري', en:'Locking is instant', ru:'Блокировка мгновенная' },
+  'adm.lockInstantB':{ ar:'القفل والفتح بيشتغلوا على طول عند كل الناس من غير نشر ومن غير انتظار — أول ما يعمل رفريش يلاقي الموقع مقفول.', en:'Lock and unlock apply to everyone at once — no publishing, no waiting. The next refresh shows the locked screen.', ru:'Блокировка действует сразу для всех — без публикации и ожидания.' },
+  'adm.lockSlowT':   { ar:'القفل الفوري غير مُفعّل', en:'Instant lock not enabled', ru:'Мгновенная блокировка не включена' },
+  'adm.lockSlowB':   { ar:'شغّل ملف lock-feature.sql في Supabase عشان القفل يبقى فوري. من غيره لازم تنشر وتستنى دقيقة.', en:'Run lock-feature.sql in Supabase to make locking instant. Without it you must publish and wait a minute.', ru:'Выполните lock-feature.sql в Supabase для мгновенной блокировки.' },
+
   /* ── shell ─────────────────────────────────────────── */
   'app.title':        { ar:'نواة المستقبل — خدمات الضبعة', en:'Nawah — El-Dabaa Services', ru:'Нава — Услуги Эль-Дабаа' },
   'nav.home':         { ar:'الرئيسية',      en:'Home',      ru:'Главная' },

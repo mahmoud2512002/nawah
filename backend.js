@@ -93,6 +93,22 @@ const DB = {
     } catch (e) { return null; }
   },
 
+  /* القفل الفوري — مخزّن في قاعدة البيانات مش في الملفات،
+     فالتغيير بيوصل للناس على طول من غير نشر ولا كاش. */
+  async isLocked() {
+    try {
+      const rows = await this.req('stats?select=value&key=eq.locked');
+      return !!(rows && rows.length && Number(rows[0].value) === 1);
+    } catch (e) { return null; }          // null = معرفناش، استخدم الملف
+  },
+
+  async setLock(flag, pass) {
+    return this.req('rpc/set_lock', {
+      method: 'POST',
+      body: JSON.stringify({ flag: !!flag, pass: String(pass) })
+    });
+  },
+
   async stats() {
     try {
       const rows = await this.req('stats?select=*');
