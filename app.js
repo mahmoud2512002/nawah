@@ -6,7 +6,17 @@
    config.json ويُحرَّر من لوحة الأدمن داخل التطبيق.
    ══════════════════════════════════════════════════════════════ */
 
-const ADMIN_PASS = '012750';
+/* كلمة مرور الإدارة — مخزّنة كبصمة SHA-256 مش كنص مكشوف.
+   لتغييرها: افتح الكونسول واكتب
+     crypto.subtle.digest('SHA-256', new TextEncoder().encode('الرقم الجديد'))
+       .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+   وحط الناتج هنا. */
+const ADMIN_HASH = '133426291639704d4fcda38152f1eecfa6f017ad52d184635a7907a292ada139';
+
+async function sha256(txt) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 /* ── tiny helpers ───────────────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -600,8 +610,11 @@ function askPassword() {
   setTimeout(() => inp.focus(), 250);
 }
 
-function tryPassword() {
-  if ($('#passInput').value.trim() !== ADMIN_PASS) {
+async function tryPassword() {
+  let ok = false;
+  try { ok = (await sha256($('#passInput').value.trim())) === ADMIN_HASH; }
+  catch (e) { ok = false; }
+  if (!ok) {
     $('#passErr').hidden = false;
     $('#passInput').value = '';
     return;
