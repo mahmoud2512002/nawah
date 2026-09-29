@@ -94,6 +94,7 @@
   "services": [
     {
       "id": "plumb",
+      "code": "S",
       "name": "سباكة",
       "icon": "plumb",
       "color": "navy",
@@ -102,6 +103,7 @@
     },
     {
       "id": "elec",
+      "code": "E",
       "name": "كهرباء",
       "icon": "bolt",
       "color": "amber",
@@ -110,6 +112,7 @@
     },
     {
       "id": "ac",
+      "code": "A",
       "name": "تكييف",
       "icon": "ac",
       "color": "green",
@@ -118,6 +121,7 @@
     },
     {
       "id": "carp",
+      "code": "C",
       "name": "نجارة",
       "icon": "carp",
       "color": "wood",
@@ -126,6 +130,7 @@
     },
     {
       "id": "sewer",
+      "code": "D",
       "name": "صرف صحي",
       "icon": "sewer",
       "color": "navy",
@@ -134,6 +139,7 @@
     },
     {
       "id": "clean",
+      "code": "N",
       "name": "نظافة",
       "icon": "clean",
       "color": "green",
@@ -142,6 +148,7 @@
     },
     {
       "id": "other",
+      "code": "X",
       "name": "أخرى",
       "icon": "gear",
       "color": "grey",

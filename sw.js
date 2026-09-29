@@ -9,7 +9,7 @@
      • من غير نت                  →  آخر نسخة متخزنة تشتغل عادي
    ══════════════════════════════════════════════════════════════ */
 
-const VERSION = 'nawah-v5';
+const VERSION = 'nawah-v6';
 
 /* يتخزنوا من أول زيارة عشان الشغل بدون إنترنت */
 const SHELL = [
@@ -22,6 +22,11 @@ const SHELL = [
   './features.js',
   './extra.js',
   './community.js',
+  './paper.js',
+  './paper.css',
+  './vendor/html2canvas.min.js',
+  './vendor/jspdf.umd.min.js',
+  './vendor/qrcode.min.js',
   './config.json',
   './manifest.webmanifest',
   './logo.png',

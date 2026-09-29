@@ -127,7 +127,7 @@ const I18N = {
   'nav.cm':        { ar:'الآراء', en:'Reviews', ru:'Отзывы' },
   'track.title':   { ar:'تتبّع طلبك', en:'Track your request', ru:'Отследить заявку' },
   'track.hint':    { ar:'اكتب رقم الطلب وشوف وصل لحد فين', en:'Enter the request number to see where it stands', ru:'Введите номер заявки' },
-  'track.ph':      { ar:'مثال: NW-2809-0001', en:'e.g. NW-2809-0001', ru:'напр. NW-2809-0001' },
+  'track.ph':      { ar:'مثال: S1', en:'e.g. S1', ru:'напр. S1' },
   'track.go':      { ar:'بحث', en:'Search', ru:'Найти' },
   'track.none':    { ar:'مفيش طلب بالرقم ده', en:'No request with that number', ru:'Заявка не найдена' },
   'track.noneB':   { ar:'راجع الرقم زي ما وصلك بالظبط.', en:'Check the number exactly as you received it.', ru:'Проверьте номер.' },

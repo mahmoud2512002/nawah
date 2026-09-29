@@ -145,6 +145,7 @@ async function renderTech() {
   }
 
   $('#techDot').hidden = !rows.length;
+  rows.forEach((r) => { if (!requests.find((x) => x.no === r.no)) WO_POOL[r.no] = r; });
 
   if (!rows.length) {
     box.innerHTML = `<div class="empty">
@@ -173,6 +174,7 @@ async function renderTech() {
       ${r.desc ? `<p class="desc">${esc(r.desc)}</p>` : ''}
       <div class="task-ops">
         <a class="btn btn-quiet" href="tel:${esc(r.phone)}">${esc(T('tech.call'))}</a>
+        <button class="btn btn-quiet" type="button" data-wo="pdf" data-no="${esc(r.no)}">أمر الشغل PDF</button>
         ${next != null ? `<button class="btn btn-primary" type="button" data-adv="${esc(r.no)}" data-stage="${next}">${esc(T('tech.adv' + next))}</button>` : ''}
       </div>
       <div class="task-steps">${[0,1,2,3,4].map((i) =>

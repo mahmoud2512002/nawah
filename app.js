@@ -224,6 +224,67 @@ let ADMIN_PIN  = sessionStorage.getItem('nawah.pin') || '';
 const svcById = (id) => (CFG.services.find((s) => s.id === id)) || CFG.services[CFG.services.length - 1] || { name:'خدمة', icon:'gear', color:'grey' };
 const telOf   = (l) => String(l.tel || '').trim();
 
+/* ══════════ رقم الطلب ══════════
+   حرف واحد لكل قسم + رقم متسلسل يبدأ من ١ ويكمل لما لا نهاية:
+   السباكة S1 ثم S2 ثم S3 … الكهرباء E1 ثم E2 … وهكذا لكل قسم عدّاده.
+
+   العدّاد الأساسي في قاعدة البيانات (دالة next_req_no) عشان يبقى
+   واحد لكل السكان. لو مفيش اتصال، الجهاز يكمّل بعدّاد محلي
+   ولا يرجع لورا أبداً. */
+
+const CODE_SPARE = 'QRTUVYZBFGHJKLMOPW';   // حروف احتياطية لأي قسم جديد
+
+// حرف القسم — من config.json، ولو مش موجود نختار له حرفاً فاضياً
+function svcCode(id) {
+  const s = CFG.services.find((x) => x.id === id);
+  const c = String((s && s.code) || '').trim().toUpperCase();
+  if (/^[A-Z]$/.test(c)) return c;
+
+  const used = {};
+  CFG.services.forEach((x) => {
+    const k = String(x.code || '').trim().toUpperCase();
+    if (/^[A-Z]$/.test(k) && x.id !== id) used[k] = 1;
+  });
+  const guess = String((s && (s.name_en || s.id)) || 'X').toUpperCase().replace(/[^A-Z]/g, '');
+  for (let i = 0; i < guess.length; i++)      if (!used[guess[i]])      return guess[i];
+  for (let i = 0; i < CODE_SPARE.length; i++) if (!used[CODE_SPARE[i]]) return CODE_SPARE[i];
+  return 'X';
+}
+
+// آخر رقم وصل له القسم على هذا الجهاز
+function lastSeq(code) {
+  const seqs = store.get('seq', {});
+  let n = Number(seqs[code] || 0);
+  if (!(n > 0)) n = 0;
+  requests.forEach((r) => {
+    const v = String((r && r.no) || '').toUpperCase();
+    if (v.charAt(0) !== code) return;
+    const tail = v.slice(1);
+    if (!/^[0-9]+$/.test(tail)) return;
+    if (Number(tail) > n) n = Number(tail);
+  });
+  return n;
+}
+
+function keepSeq(no) {
+  const m = /^([A-Z])(\d+)$/.exec(String(no || '').toUpperCase());
+  if (!m) return no;
+  const seqs = store.get('seq', {});
+  if (Number(m[2]) > Number(seqs[m[1]] || 0)) { seqs[m[1]] = Number(m[2]); store.set('seq', seqs); }
+  return no;
+}
+
+async function newReqNo(svcId) {
+  const code = svcCode(svcId);
+  if (DB.ready()) {
+    try {
+      const out = await DB.nextNo(code);
+      if (/^[A-Z]\d+$/.test(String(out || ''))) return keepSeq(out);
+    } catch (e) { /* مفيش اتصال — نكمّل محلياً */ }
+  }
+  return keepSeq(code + (lastSeq(code) + 1));
+}
+
 /* ══════════ config loading ══════════
    config.json is the source of truth for everyone.
    The admin's unpublished edits live in localStorage until exported. */
@@ -281,10 +342,11 @@ function renderLock() {
 }
 
 /* ══════════ navigation ══════════ */
-const VIEWS = ['home', 'new', 'list', 'detail', 'emergency', 'settings', 'admin', 'tech', 'cm'];
+const VIEWS = ['home', 'new', 'list', 'detail', 'emergency', 'settings', 'admin', 'tech', 'cm', 'wo', 'cards'];
 
 function go(name, arg) {
   if (name === 'admin' && !isAdmin) { askPassword(); return; }
+  if (name === 'cards' && !isAdmin) { askPassword(); return; }
   if (name === 'tech' && !TECH) { askTech(); return; }
   VIEWS.forEach((v) => { const el = $('#v-' + v); if (el) el.hidden = (v !== name); });
   $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.go === name));
@@ -298,6 +360,8 @@ function go(name, arg) {
   if (name === 'tech')      renderTech();
   if (name === 'cm')        loadComments();
   if (name === 'home')      renderCounters();
+  if (name === 'wo')        renderWO(arg);
+  if (name === 'cards')     renderCards();
 
   const v = $('#v-' + name);
   if (v) { v.style.animation = 'none'; void v.offsetWidth; v.style.animation = ''; }
@@ -387,8 +451,11 @@ function renderShots() {
       <button type="button" data-rm="${i}" aria-label="${esc(T('a11y.delShot'))}">&times;</button></div>`).join('');
 }
 
-function onSubmit(e) {
+let submitting = false;
+
+async function onSubmit(e) {
   e.preventDefault();
+  if (submitting) return;
   const area  = $('#fArea').value.trim();
   const block = $('#fBlock').value.trim();
   const flat  = $('#fFlat').value.trim();
@@ -412,15 +479,20 @@ function onSubmit(e) {
   }
 
   const now = new Date();
-  const seq = requests.length + 1;
-  const no = 'NW-' + String(now.getDate()).padStart(2,'0') + String(now.getMonth()+1).padStart(2,'0')
-           + '-' + String(seq).padStart(4,'0');
+  const btn = e.target.querySelector('[type="submit"]');
+  submitting = true;
+  if (btn) btn.disabled = true;
+
+  let no;
+  try { no = await newReqNo(draft.svc); }
+  finally { submitting = false; if (btn) btn.disabled = false; }
 
   requests.unshift({
     no, svc:draft.svc, prio:draft.prio, area, block, flat,
     floor:$('#fFloor').value.trim(), spot:$('#fSpot').value.trim(),
     desc:$('#fDesc').value.trim(), phone, shots:draft.shots.slice(),
-    stage:0, wo:'WO-' + now.getFullYear() + '-' + String(1000 + seq), at:now.toISOString()
+    stage:0, wo:'WO-' + now.getFullYear() + '-' + no,
+    at:now.toISOString(), woAt:now.toISOString()
   });
   if (!store.set('requests', requests)) { requests.shift(); return; }
 
@@ -433,8 +505,9 @@ function onSubmit(e) {
   $('#doneSla').textContent = T('done.prio') + ': ' + C(p,'label') + ' — ' + T('done.target') + ' ' + C(p,'sla');
   $('#doneSheet').hidden = false;
   $('#btnDoneTrack').onclick = () => { $('#doneSheet').hidden = true; go('detail', no); };
+  $('#btnDoneWO').onclick = () => { $('#doneSheet').hidden = true; go('wo', no); };
   wireSend(saved);
-  finishDelivery(saved);
+  finishDelivery(saved).then(() => autoWO(saved));
 
   e.target.reset();
   draft = { svc:'', prio:'', shots:[] };
@@ -575,6 +648,10 @@ function renderDetail(no) {
       ${r.desc ? `<p class="desc">${esc(r.desc)}</p>` : ''}
       ${r.shots && r.shots.length ? `<div class="d-shots">${r.shots.map((x,i)=>`<img src="${x}" alt="صورة العطل ${num(i+1)}">`).join('')}</div>` : ''}
     </section>
+    <section class="card wo-link"><h3>أمر الشغل</h3>
+      <p>صدر لطلبك أمر شغل رقم <b class="ltr">${esc(r.wo)}</b> ومحفوظ في الأرشيف ملف PDF — الفني يحمله معه عند الزيارة.</p>
+      <button class="btn btn-primary btn-block" type="button" data-wo="open" data-no="${esc(r.no)}">📄 عرض أمر الشغل وتحميله PDF</button>
+    </section>
     <section class="card"><h3>إرسال / متابعة مع الإدارة</h3>
       <p>لو لسه مبعتّش الطلب للإدارة، أو عايز تسأل عن حالته:</p>
       <button class="btn btn-wa btn-block" type="button" data-resend="${esc(r.no)}">
@@ -674,6 +751,7 @@ function renderAdmin() {
   if (adminTab === 'backend')   box.innerHTML = admBackend();
   if (adminTab === 'ann')       box.innerHTML = admAnn();
   if (adminTab === 'archive')   { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admArchive(box); }
+  if (adminTab === 'orders')    { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admOrders(box); }
 }
 
 function admServices() {
@@ -691,6 +769,11 @@ function admServices() {
           <button type="button" data-act="del"  data-i="${i}" class="dl" aria-label="حذف">✕</button>
         </div>
         <div class="adm-edit" data-edit="${i}" hidden>
+          <label class="adm-code">حرف القسم في رقم الطلب
+            <input value="${esc(svcCode(s.id))}" data-code="${i}" maxlength="1" size="1"
+                   aria-label="حرف القسم" class="ltr">
+            <span class="fine">الطلبات تبقى ${esc(svcCode(s.id))}1 ثم ${esc(svcCode(s.id))}2 وهكذا</span>
+          </label>
           <div class="pal">${ICON_ORDER.map((k) => `<button type="button" class="pal-i ${s.icon===k?'on':''}" data-seticon="${k}" data-i="${i}">${svg(ICONS[k])}</button>`).join('')}</div>
           <div class="pal cols">${COLOR_ORDER.map((k) => `<button type="button" class="pal-c ${s.color===k?'on':''}" data-setcolor="${k}" data-i="${i}" style="background:${COLORS[k].tint};border-color:${COLORS[k].ink}"><i style="background:${COLORS[k].ink}"></i></button>`).join('')}</div>
         </div>
@@ -887,6 +970,8 @@ async function admArchive(box) {
     rows = requests.slice();
   }
 
+  if (adminTab !== 'archive' || $('#v-admin').hidden) return;   // الإدارة انتقلت لتبويب تاني قبل التحميل
+  rows.forEach((r) => { if (!requests.find((x) => x.no === r.no)) WO_POOL[r.no] = r; });
   const counts = [0,1,2,3,4].map((i) => rows.filter((r) => (r.stage|0) === i).length);
   const rated = rows.filter((r) => r.rating);
   const avg = rated.length ? (rated.reduce((a, r) => a + r.rating, 0) / rated.length).toFixed(1) : '\u2014';
@@ -921,7 +1006,7 @@ async function admArchive(box) {
 function initAdmin() {
   $('#admTabs').addEventListener('click', (e) => {
     const c = e.target.closest('.chip');
-    if (!c) return;
+    if (!c || !c.dataset.tab) return;
     adminTab = c.dataset.tab;
     renderAdmin();
   });
@@ -945,7 +1030,11 @@ function initAdmin() {
       if (!confirm(T('adm.delAsk') + ' «' + C(CFG.services[i],'name') + '»؟')) return;
       CFG.services.splice(i, 1);
     }
-    if (act === 'addsvc') CFG.services.push({ id: uid(), name: T('adm.newSvc'), icon: 'gear', color: 'navy' });
+    if (act === 'addsvc') {
+      const ns = { id: uid(), name: T('adm.newSvc'), icon: 'gear', color: 'navy' };
+      CFG.services.push(ns);
+      ns.code = svcCode(ns.id);          // حرف فاضي لرقم الطلب
+    }
 
     if (act === 'lup')     swap(CFG.lines, i, i - 1);
     if (act === 'ldown')   swap(CFG.lines, i, i + 1);
@@ -1022,6 +1111,22 @@ function initAdmin() {
   $('#admBody').addEventListener('input', (e) => {
     const t = e.target;
     const i = Number(t.dataset.i);
+    /* حرف القسم في رقم الطلب — حرف إنجليزي واحد لا يتكرّر بين الأقسام */
+    if (t.dataset.code !== undefined) {
+      const v = String(t.value || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 1);
+      t.value = v;
+      if (!v) return;                                   // لسه بيكتب
+      if (CFG.services.some((x, j) => j !== i && String(x.code || '').toUpperCase() === v)) {
+        toast('الحرف ' + v + ' مستخدم في قسم تاني');
+        t.value = String(CFG.services[i].code || '').toUpperCase();
+        return;
+      }
+      CFG.services[i].code = v;
+      const hint = t.parentNode.querySelector('.fine');
+      if (hint) hint.textContent = 'الطلبات تبقى ' + v + '1 ثم ' + v + '2 وهكذا';
+      saveDraft();
+      return;
+    }
     if (t.dataset.k)    CFG.services[i][t.dataset.k] = t.value;
     else if (t.dataset.tk) CFG.technicians[i][t.dataset.tk] = t.value;
     else if (t.dataset.ak) CFG.announcements[i][LANG === 'ar' ? t.dataset.ak : t.dataset.ak + '_' + LANG] = t.value;
@@ -1254,6 +1359,21 @@ async function finishDelivery(r) {
   renderCounters();
 }
 
+/* ══════════ أمر الشغل التلقائي ══════════
+   بعد تسجيل الطلب مباشرة: يتحوّل أمر الشغل PDF ويتحفظ في الأرشيف
+   (على الجهاز + السحابة) باسم رقم البحث. */
+async function autoWO(r) {
+  const el = $('#doneWOState');
+  try {
+    const rec = await archiveWO(r);
+    if (el) el.textContent = rec.cloud
+      ? '✓ أمر الشغل محفوظ في الأرشيف باسم ' + r.no + '.pdf'
+      : '✓ أمر الشغل محفوظ على هذا الجهاز، ويُرفع للأرشيف عند توفر الاتصال.';
+  } catch (e) {
+    if (el) el.textContent = 'أمر الشغل جاهز — اضغط الزر لعرضه وتحميله.';
+  }
+}
+
 /* ══════════ technician wiring ══════════ */
 function initTech() {
   const saved = sessionStorage.getItem('nawah.tech');
@@ -1292,6 +1412,16 @@ async function bootExtras() {
 
   initTech();
   initCommunity();
+  initCards();
+  flushWO();
+
+  /* ?t=S12 من رمز QR المطبوع على أمر الشغل */
+  const qTrack = new URLSearchParams(location.search).get('t');
+  if (qTrack) {
+    $('#trackNo').value = qTrack;
+    trackRequest(qTrack);
+    setTimeout(() => $('#trackNo').scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+  }
   paintFooter();
   renderAnn();
   startPolling();

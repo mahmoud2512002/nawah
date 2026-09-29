@@ -752,6 +752,12 @@ form{ display:flex; flex-direction:column; gap:16px; }
 .adm-ops button.dl{ color:var(--urgent); }
 
 .adm-edit{ flex:1 1 100%; border-top:1px dashed var(--line); padding-top:10px; margin-top:2px; }
+.adm-code{ display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  font-size:13px; font-weight:600; margin-bottom:10px; }
+.adm-code input{ width:44px; text-align:center; font-weight:800; font-size:16px;
+  text-transform:uppercase; padding:6px 4px; border:1px solid var(--line);
+  border-radius:8px; background:var(--surface); color:inherit; }
+.adm-code .fine{ font-weight:400; }
 .pal{ display:flex; flex-wrap:wrap; gap:6px; }
 .pal.cols{ margin-top:8px; }
 .pal-i{

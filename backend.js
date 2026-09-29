@@ -84,6 +84,41 @@ const DB = {
   assign(no, techId, techName) { return this.patch(no, { tech_id: techId, tech_name: techName, stage: 1 }); },
   rate(no, stars, note) { return this.patch(no, { rating: stars, rating_note: note || '' }); },
 
+  /* ── رقم الطلب: عدّاد مركزي لكل قسم ──────────────────
+     الدالة في قاعدة البيانات بتزوّد العدّاد وترجّع الرقم في
+     خطوة واحدة، فمستحيل رقمان يتكرّران حتى لو اتسجّل طلبان
+     في نفس اللحظة من جهازين. */
+  async nextNo(code) {
+    const out = await this.req('rpc/next_req_no', {
+      method: 'POST',
+      body: JSON.stringify({ p: String(code || 'X') })
+    });
+    return typeof out === 'string' ? out : (out && out.next_req_no) || '';
+  },
+
+  /* ── أرشيف أوامر الشغل (PDF) ─────────────────────────
+     كل أمر شغل يترفع ملف PDF في الـ bucket اسمه work-orders
+     باسم رقم البحث: S12.pdf — الإعداد في work-orders.sql */
+  pdfURL(name) {
+    return this.url + '/storage/v1/object/public/work-orders/' + encodeURIComponent(name);
+  },
+
+  async uploadPDF(name, blob) {
+    if (!this.ready()) throw new Error('backend-off');
+    const res = await fetch(this.url + '/storage/v1/object/work-orders/' + encodeURIComponent(name), {
+      method: 'POST',
+      headers: {
+        'apikey': this.key,
+        'Authorization': 'Bearer ' + this.key,
+        'Content-Type': 'application/pdf',
+        'x-upsert': 'true'
+      },
+      body: blob
+    });
+    if (!res.ok) throw new Error('upload-' + res.status);
+    return this.pdfURL(name);
+  },
+
   /* ── counters ─────────────────────────────────────── */
 
   async bumpVisits() {
@@ -169,7 +204,7 @@ function fromRow(x) {
     spot: x.spot, desc: x.descr, phone: x.phone, name: x.resident_name,
     stage: x.stage || 0, tech_id: x.tech_id, tech_name: x.tech_name,
     rating: x.rating, rating_note: x.rating_note,
-    at: x.created_at, shots: []
+    at: x.created_at, shots: [], wo_pdf: x.wo_pdf || ''
   };
 }
 

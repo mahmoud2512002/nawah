@@ -24,6 +24,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Readex+Pro:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="paper.css">
 </head>
 <body>
 
@@ -339,12 +340,36 @@
         <button class="chip" data-tab="ann" type="button" data-t="adm.tAnn">الإعلانات</button>
         <button class="chip" data-tab="tech" type="button" data-t="adm.tTech">الفنيين</button>
         <button class="chip" data-tab="archive" type="button" data-t="adm.tArchive">الأرشيف</button>
+        <button class="chip" data-tab="orders" type="button">أوامر الشغل</button>
+        <button class="chip chip-go" data-go="cards" type="button">الكارنيهات</button>
         <button class="chip" data-tab="backend" type="button" data-t="adm.tBackend">السيرفر</button>
         <button class="chip" data-tab="lock" type="button" data-t="adm.tLock">القفل</button>
         <button class="chip" data-tab="publish" type="button" data-t="adm.tPublish">نشر</button>
       </div>
 
       <div class="card adm-card" id="admBody"></div>
+    </section>
+
+    <!-- ══════════ WORK ORDER SHEET ══════════ -->
+    <section class="view" id="v-wo" hidden>
+      <div class="vhead">
+        <button class="back" data-go="list" type="button" data-ta="a11y.back">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <h2>أمر الشغل</h2>
+      </div>
+      <div id="woBox"></div>
+    </section>
+
+    <!-- ══════════ ID CARDS ══════════ -->
+    <section class="view" id="v-cards" hidden>
+      <div class="vhead">
+        <button class="back" data-go="admin" type="button" data-ta="a11y.back">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <h2>كارنيهات العاملين</h2>
+      </div>
+      <div class="card" id="cardsBox"></div>
     </section>
 
 
@@ -477,6 +502,8 @@
       </button>
       <button class="btn btn-quiet btn-block" id="btnCopyReq" type="button">📋 <span data-t="done.copy">نسخ</span></button>
     </div>
+    <button class="btn btn-primary btn-block" id="btnDoneWO" type="button">📄 أمر الشغل — عرض وتحميل PDF</button>
+    <p class="fine center" id="doneWOState">صدر أمر الشغل تلقائياً وجاري حفظه في الأرشيف…</p>
     <button class="btn btn-quiet btn-block" id="btnDoneTrack" type="button" data-t="done.track">تابع حالة الطلب</button>
   </div>
 </div>
@@ -518,6 +545,7 @@
 <script src="features.js"></script>
 <script src="extra.js"></script>
 <script src="community.js"></script>
+<script src="paper.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

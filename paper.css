@@ -1,0 +1,388 @@
+/* ══════════════════════════════════════════════════════════════
+   نواة المستقبل — الأوراق الرسمية
+   ١) أمر الشغل: ورقة A4 يحملها الفني وهو متوجه للوحدة.
+   ٢) الكارنيهات: بطاقات تعريف رأسية بمقاس البطاقة القياسي،
+      بلون مميز لكل قسم تنفيذاً للبند (٢) من الخطاب.
+
+   الورقة تتعرض على الشاشة داخل «معاينة»، وتتحوّل PDF تلقائياً
+   (.pdf-host خارج الشاشة)، أو تتطبع مباشرة (#paper).
+   ملحوظة: ممنوع letter-spacing على أي نص عربي — بيقطّع الحروف
+   في ملف الـ PDF.
+   ══════════════════════════════════════════════════════════════ */
+
+:root{
+  --pp-ink:#151A31;
+  --pp-navy:#1E2A72;
+  --pp-navy-d:#0E1545;
+  --pp-line:#DEE3F3;
+  --pp-soft:#F6F8FE;
+  --pp-mute:#646D8C;
+  --pp-gold:#F2B705;
+}
+
+/* ══════════ أدوات المعاينة ══════════ */
+.pp-bar{
+  display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+  margin-bottom:16px;
+}
+.pp-bar .btn{ flex:1 1 auto; }
+.pp-note{
+  font-size:13px; color:var(--pp-mute); line-height:1.8;
+  background:var(--pp-soft); border:1px solid var(--pp-line);
+  border-radius:12px; padding:12px 14px; margin-bottom:16px;
+}
+.pp-note b{ color:var(--pp-navy); }
+
+.pp-stage{
+  overflow:hidden; background:#E6EAF5; border-radius:14px;
+  padding:14px; border:1px solid var(--pp-line);
+}
+.pp-fit{ transform-origin:top right; }
+[dir="ltr"] .pp-fit{ transform-origin:top left; }
+
+/* كارت رقم البحث أعلى شاشة أمر الشغل */
+.wo-hero{
+  display:grid; grid-template-columns:1fr 1fr; gap:10px;
+  background:linear-gradient(135deg,var(--pp-navy-d),var(--pp-navy) 70%,#2B3A8E);
+  color:#fff; border-radius:16px; padding:16px; margin-bottom:14px;
+}
+.wo-hero div span{ display:block; font-size:12px; opacity:.75; }
+.wo-hero div b{ display:block; font-family:"Readex Pro",sans-serif; font-size:26px; line-height:1.3; }
+.wo-hero div:last-of-type b{ font-size:17px; padding-top:7px; }
+.wo-hero .wo-state{ grid-column:1 / -1; margin:0; font-size:12.5px;
+  background:rgba(255,255,255,.1); border-radius:9px; padding:7px 10px; }
+
+/* حاوية التحويل لـ PDF — موجودة في الصفحة لكن بره الشاشة */
+.pdf-host{
+  position:absolute; top:0; left:-12000px; width:210mm;
+  pointer-events:none; direction:rtl;
+}
+.pdf-host .sheet-a4,
+.pdf-host .cards-a4{ box-shadow:none !important; margin:0 !important; }
+
+/* ══════════ ورقة أمر الشغل ══════════ */
+.sheet-a4{
+  width:210mm; height:297mm; background:#fff; color:var(--pp-ink);
+  font-family:"IBM Plex Sans Arabic",system-ui,sans-serif;
+  font-size:10pt; line-height:1.7; direction:rtl; text-align:right;
+  box-shadow:0 6px 24px rgba(17,24,70,.16);
+  position:relative; overflow:hidden;
+  display:flex; flex-direction:column;
+}
+.sheet-a4 *{ box-sizing:border-box; }
+.sheet-a4 > *{ flex:none; }
+.sheet-a4 .ltr{ direction:ltr; unicode-bidi:isolate; display:inline-block; }
+
+/* علامة مائية بالشعار */
+.wo-mark{
+  position:absolute; width:120mm; height:120mm; object-fit:contain;
+  top:118mm; left:45mm; opacity:.035; pointer-events:none;
+}
+
+/* الترويسة */
+.wo-head{
+  background:linear-gradient(125deg,var(--pp-navy-d) 0%,var(--pp-navy) 60%,#2E3E9A 100%);
+  color:#fff; padding:5mm 13mm 4.5mm; position:relative; overflow:hidden;
+}
+.wo-head::before{
+  content:""; position:absolute; width:90mm; height:90mm; border-radius:50%;
+  border:.5mm solid rgba(255,255,255,.12); top:-45mm; left:-20mm;
+}
+.wo-head::after{
+  content:""; position:absolute; width:60mm; height:60mm; border-radius:50%;
+  border:.5mm solid rgba(242,183,5,.35); top:-30mm; left:-5mm;
+}
+.wo-head > *{ position:relative; z-index:1; }
+.wo-brand{ display:flex; align-items:center; gap:5mm; }
+.wo-brand > img{ width:14.5mm; height:14.5mm; object-fit:contain; flex:none;
+  background:#fff; border-radius:50%; padding:1.3mm; box-shadow:0 0 0 .8mm rgba(242,183,5,.8); }
+.wo-brand .logo2{ margin-inline-start:auto; box-shadow:none; }
+.wo-brand h1{ margin:0; font-family:"Readex Pro","IBM Plex Sans Arabic",sans-serif;
+  font-size:14.5pt; font-weight:700; line-height:1.35; }
+.wo-brand .en{ font-size:7.2pt; opacity:.7; display:block; direction:ltr;
+  text-align:right; letter-spacing:.8px; margin-top:.6mm; }
+.wo-brand .sub{ font-size:9.5pt; opacity:.9; margin-top:.8mm; display:block; }
+
+.wo-title{
+  display:flex; align-items:flex-end; justify-content:space-between;
+  gap:8mm; margin-top:3.5mm;
+}
+.wo-title b{
+  font-family:"Readex Pro","IBM Plex Sans Arabic",sans-serif;
+  font-size:18pt; font-weight:700; line-height:1.15; display:block;
+}
+.wo-title .en2{ font-size:7.5pt; letter-spacing:2.4px; opacity:.65; direction:ltr; display:block; margin-top:.5mm; }
+.wo-search{
+  background:#fff; color:var(--pp-navy); border-radius:3.5mm;
+  padding:1.4mm 5mm; display:flex; align-items:center; gap:3.5mm;
+  box-shadow:0 0 0 1mm rgba(242,183,5,.9);
+}
+.wo-search span{ font-size:9pt; color:var(--pp-mute); display:block; font-weight:600; }
+.wo-search strong{ font-size:20pt; font-weight:700; direction:ltr; display:block; line-height:1.15;
+  font-family:"Readex Pro",sans-serif; }
+
+/* شريط القسم بلونه */
+.wo-dept{
+  display:flex; align-items:center; gap:3mm;
+  background:var(--d); color:#fff; padding:1.8mm 13mm;
+  font-size:11pt;
+}
+.wo-dept .ic{ width:7.5mm; height:7.5mm; border-radius:50%; background:rgba(255,255,255,.18);
+  display:flex; align-items:center; justify-content:center; flex:none; }
+.wo-dept .ic svg{ width:4.8mm; height:4.8mm; }
+.wo-dept b{ font-family:"Readex Pro",sans-serif; font-weight:600; }
+.wo-dept-no{ margin-inline-start:auto; font-size:9.5pt; opacity:.92; }
+.wo-dept-no em{ font-style:normal; font-weight:700; direction:ltr; unicode-bidi:isolate; }
+
+/* الجسم */
+.wo-body{ padding:4.5mm 13mm 3mm; flex:1 1 auto !important; position:relative; z-index:1;
+  display:flex; flex-direction:column; gap:2.5mm; overflow:hidden; }
+.wo-row{ display:flex; gap:4mm; }
+.wo-row > *{ flex:1; min-width:0; }
+
+/* بلاطات البيانات الأساسية */
+.wo-tiles{ display:grid; grid-template-columns:34mm 1fr 44mm 24mm; gap:3mm; }
+.wo-tiles > div{
+  border:.4mm solid var(--pp-line); border-radius:3mm; padding:2.2mm 3.4mm;
+  background:var(--pp-soft);
+}
+.wo-tiles span{ display:block; font-size:8pt; color:var(--pp-mute); }
+.wo-tiles b{ display:block; font-size:10.5pt; font-weight:700; color:var(--pp-ink); line-height:1.45; }
+.wo-tiles em{ display:block; font-style:normal; font-size:9pt; color:var(--pp-ink); }
+.wo-tiles > div:first-child{ background:var(--dt); border-color:var(--d); }
+.wo-tiles > div:first-child b{ color:var(--dd); font-size:19pt; line-height:1.3; font-family:"Readex Pro",sans-serif; }
+.wo-tiles .prio{ border-color:var(--p); background:#fff; }
+.wo-tiles .prio b{ color:var(--p); font-size:12.5pt; font-family:"Readex Pro",sans-serif;
+  display:flex; align-items:center; gap:2mm; }
+.wo-tiles .prio b i{ width:3mm; height:3mm; border-radius:50%; background:var(--p); }
+.wo-tiles .qr{ background:#fff; text-align:center; padding:1.4mm; }
+.wo-tiles .qr img{ width:17mm; height:17mm; display:block; margin:0 auto .6mm; image-rendering:pixelated; }
+.wo-tiles .qr span{ font-size:6pt; line-height:1.25; }
+
+/* البطاقات */
+.wo-card{
+  border:.4mm solid var(--pp-line); border-radius:3mm; padding:2.8mm 4.5mm;
+  background:#fff;
+}
+.wo-card.soft{ background:var(--pp-soft); }
+.wo-card h3{
+  margin:0 0 2.2mm; font-size:10pt; color:var(--pp-navy);
+  font-family:"Readex Pro","IBM Plex Sans Arabic",sans-serif; font-weight:600;
+  display:flex; align-items:center; gap:2.4mm;
+}
+.wo-card h3::before{
+  content:""; width:1.3mm; height:4.4mm; border-radius:1mm;
+  background:var(--d); flex:none;
+}
+
+.wo-where{ border-color:var(--d); background:linear-gradient(180deg,var(--dt),#fff 70%); }
+.wo-addr{ margin:0 0 1.6mm; font-size:13pt; font-weight:700; color:var(--dd);
+  font-family:"Readex Pro","IBM Plex Sans Arabic",sans-serif; }
+
+.wo-kv{ display:grid; grid-template-columns:auto 1fr; gap:1.2mm 4mm; font-size:9.6pt; margin:0; }
+.wo-kv dt{ color:var(--pp-mute); white-space:nowrap; }
+.wo-kv dd{ margin:0; font-weight:600; }
+.wo-kv .ltr{ direction:ltr; text-align:right; unicode-bidi:isolate; }
+.wo-kv.cols{ display:flex; flex-wrap:wrap; gap:2mm 7mm; }
+.wo-kv.cols > div{ display:flex; gap:2mm; }
+
+.wo-desc{ min-height:9mm; font-size:10.5pt; line-height:1.85; }
+.wo-desc.empty{ color:var(--pp-mute); }
+.wo-desc.long{ font-size:9pt; line-height:1.65; }
+
+/* خانات الفني */
+.wo-fill{ display:grid; grid-template-columns:1fr 1fr; gap:2.4mm 6mm; }
+.wo-fill.full{ grid-template-columns:1fr; margin-top:1.6mm; }
+.wo-line{ font-size:9pt; color:var(--pp-mute); }
+.wo-line i{ font-style:normal; display:block; border-bottom:.35mm dotted #9AA3C4;
+  height:5.2mm; }
+.wo-line i.tall{ height:9.5mm; background:repeating-linear-gradient(180deg,transparent 0 5.6mm,#D5DAEC 5.6mm 5.95mm); }
+
+.wo-checks{ display:flex; gap:6mm; flex-wrap:wrap; font-size:9.5pt; margin-top:2.6mm; }
+.wo-checks label{ display:flex; align-items:center; gap:1.8mm; }
+.wo-checks u{ width:4mm; height:4mm; border:.45mm solid var(--d);
+  border-radius:1mm; display:inline-block; text-decoration:none; flex:none; background:#fff; }
+
+.wo-sign{ display:grid; grid-template-columns:repeat(3,1fr); gap:6mm; }
+.wo-sign div{ text-align:center; font-size:9pt; color:var(--pp-mute); }
+.wo-sign div i{ display:block; border-bottom:.4mm solid #9AA3C4; height:7.5mm; margin-bottom:1.2mm; }
+
+.wo-warn{
+  background:#FFF6E0; border:.45mm solid #EBC77E; border-radius:3mm;
+  padding:2.2mm 4.5mm; font-size:9pt; line-height:1.7; color:#6E4308;
+}
+.wo-warn > b:first-child{ color:#B86F14; display:inline-block; margin-inline-end:1.5mm; }
+
+.wo-foot{
+  margin-top:auto; background:var(--pp-navy-d); color:rgba(255,255,255,.82);
+  padding:2.4mm 13mm; display:flex; align-items:center; gap:4mm;
+  font-size:8pt; position:relative; z-index:1;
+}
+.wo-foot img{ width:7mm; height:7mm; background:#fff; border-radius:50%; padding:.5mm; }
+.wo-foot span:last-child{ margin-inline-start:auto; }
+.wo-foot b{ color:var(--pp-gold); }
+
+/* ══════════ الكارنيهات — رأسية ٥٤ × ٨٥٫٦ مم ══════════ */
+.cards-a4{
+  width:210mm; height:297mm; background:#fff; padding:9mm 10mm;
+  box-shadow:0 6px 24px rgba(17,24,70,.16);
+  font-family:"IBM Plex Sans Arabic",system-ui,sans-serif; direction:rtl;
+  display:flex; flex-direction:column; gap:5mm; overflow:hidden;
+}
+.cards-a4 *{ box-sizing:border-box; }
+.cards-cap{ display:flex; align-items:center; gap:3mm; font-size:8.5pt; color:var(--pp-mute);
+  border-bottom:.3mm solid var(--pp-line); padding-bottom:2.5mm; }
+.cards-cap img{ width:7mm; height:7mm; object-fit:contain; }
+.cards-cap b{ color:var(--pp-navy); font-size:9.5pt; }
+.cards-cap span{ margin-inline-start:auto; }
+.cards-grid{ display:grid; grid-template-columns:repeat(3,54mm); gap:6mm 9mm; justify-content:center; }
+.cards-grid .bdg{ outline:.25mm dashed #BCC5E0; outline-offset:1.6mm; }
+.bdg-empty{ width:54mm; height:85.6mm; }
+
+.bdg{
+  width:54mm; height:85.6mm; border-radius:3.4mm; overflow:hidden;
+  position:relative; background:#fff; color:var(--pp-ink);
+  font-family:"IBM Plex Sans Arabic",system-ui,sans-serif; direction:rtl;
+  display:flex; flex-direction:column; align-items:center; flex:none;
+  border:.3mm solid #D9DEEE; text-align:center;
+}
+.bdg *{ box-sizing:border-box; }
+
+.bdg-head{
+  width:100%; height:27mm; flex:none; position:relative; overflow:hidden;
+  background:linear-gradient(145deg,var(--dd) 0%,var(--d) 75%);
+  color:#fff;
+}
+.bdg-orb{ position:absolute; inset:0; width:100%; height:100%; }
+.bdg-brand{ position:relative; display:flex; align-items:center; justify-content:center;
+  gap:1.8mm; padding-top:3mm; }
+.bdg-brand img{ width:8.5mm; height:8.5mm; object-fit:contain; background:#fff;
+  border-radius:50%; padding:.6mm; box-shadow:0 0 0 .5mm rgba(255,255,255,.4); }
+.bdg-brand div{ text-align:right; line-height:1.25; }
+.bdg-brand b{ display:block; font-family:"Readex Pro","IBM Plex Sans Arabic",sans-serif;
+  font-size:8.6pt; font-weight:700; }
+.bdg-brand span{ display:block; font-size:5.8pt; opacity:.85; }
+.bdg-wave{ position:absolute; bottom:-.2mm; left:0; width:100%; height:7mm; }
+
+.bdg-photo{
+  width:23mm; height:28mm; margin-top:-12mm; position:relative; z-index:2; flex:none;
+  border-radius:3mm; overflow:hidden; background:var(--dt);
+  border:.9mm solid #fff; box-shadow:0 0 0 .5mm var(--d), 0 1.5mm 3mm rgba(0,0,0,.18);
+  display:flex; align-items:center; justify-content:center;
+}
+.bdg-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+.bdg-photo em{ font-style:normal; font-size:6pt; color:var(--d); line-height:1.4; }
+
+.bdg-name{ margin-top:2mm; padding:0 3mm; font-family:"Readex Pro","IBM Plex Sans Arabic",sans-serif;
+  font-size:9.6pt; font-weight:700; line-height:1.3; color:var(--pp-ink);
+  max-width:100%; }
+.bdg-name.long{ font-size:8.4pt; }
+.bdg-job{ font-size:7pt; color:var(--pp-mute); margin-top:.4mm; line-height:1.3; }
+.bdg-dept{
+  display:inline-flex; align-items:center; gap:1.3mm; margin-top:1.6mm;
+  background:var(--d); color:#fff; border-radius:10mm; padding:.7mm 3mm .7mm 2.4mm;
+  font-size:7pt; font-weight:700; line-height:1.4;
+}
+.bdg-dept i{ width:3.4mm; height:3.4mm; display:flex; }
+.bdg-dept i svg{ width:100%; height:100%; }
+
+.bdg-kv{ margin:2mm 0 0; width:100%; padding:0 3.5mm; display:flex; flex-direction:column; gap:.8mm; }
+.bdg-kv div{ display:flex; justify-content:space-between; align-items:center;
+  background:var(--dt); border-radius:1.4mm; padding:.6mm 2mm; font-size:6.4pt; }
+.bdg-kv dt{ color:var(--pp-mute); }
+.bdg-kv dd{ margin:0; font-weight:700; color:var(--dd); direction:ltr; font-size:7pt; }
+
+.bdg-foot{
+  margin-top:auto; width:100%; background:var(--dd); color:#fff;
+  display:flex; justify-content:center; align-items:center; gap:1.6mm;
+  padding:1.3mm 2mm; font-size:6.4pt; flex:none;
+  border-top:.8mm solid var(--pp-gold);
+}
+.bdg-foot span{ opacity:.8; }
+.bdg-foot b{ font-weight:700; }
+
+/* ظهر الكارنيه */
+.bdg.back{ background:linear-gradient(180deg,#fff 60%,var(--dt)); }
+.bdg-top{ width:100%; display:flex; align-items:center; gap:2mm; padding:2.6mm 3mm;
+  background:var(--d); color:#fff; text-align:right; flex:none; }
+.bdg-top img{ width:7mm; height:7mm; background:#fff; border-radius:50%; padding:.5mm; object-fit:contain; }
+.bdg-top b{ display:block; font-size:7.8pt; font-family:"Readex Pro",sans-serif; }
+.bdg-top span{ display:block; font-size:4.8pt; opacity:.8; direction:ltr; text-align:right; }
+.bdg-rules{ margin:2.4mm 0 0; padding:0 3.6mm 0 3mm; list-style:none; text-align:right;
+  font-size:5.9pt; line-height:1.55; color:var(--pp-ink); }
+.bdg-rules li{ position:relative; padding-inline-start:2.4mm; margin-bottom:.5mm; }
+.bdg-rules li::before{ content:""; position:absolute; right:0; top:1.3mm; width:1.1mm; height:1.1mm;
+  border-radius:50%; background:var(--d); }
+.bdg-qr{ display:flex; align-items:center; gap:2mm; margin-top:2mm; }
+.bdg-qr img{ width:15mm; height:15mm; border:.3mm solid var(--pp-line); border-radius:1mm;
+  padding:.8mm; background:#fff; image-rendering:pixelated; }
+.bdg-qr span{ font-size:5.4pt; color:var(--pp-mute); text-align:right; line-height:1.45; }
+.bdg-meta{ width:100%; display:flex; gap:2mm; padding:0 3mm; margin-top:2mm; }
+.bdg-meta div{ flex:1; text-align:center; font-size:5.4pt; color:var(--pp-mute); }
+.bdg-meta b{ display:block; font-size:6.4pt; color:var(--dd); }
+.bdg-meta i{ display:block; border-bottom:.3mm solid #9AA3C4; height:4mm; }
+.bdg-line{ font-size:5.6pt; color:var(--pp-mute); margin-top:1.4mm; }
+.bdg-line b{ color:var(--dd); direction:ltr; unicode-bidi:isolate; }
+.bdg.back .bdg-foot{ font-size:5.4pt; }
+
+/* ══════════ محرّر الكارنيه ══════════ */
+.dept-legend{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; }
+.dl-chip{
+  display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+  border:1.5px solid var(--pp-line); background:#fff; color:var(--pp-ink);
+  border-radius:99px; padding:5px 11px 5px 12px; font:inherit; font-size:12.5px;
+}
+.dl-chip i{ width:11px; height:11px; border-radius:50%; background:var(--d); }
+.dl-chip.on{ border-color:var(--d); background:var(--dt); color:var(--d); font-weight:700; }
+
+.idf{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+.idf .fld{ margin-top:0; }
+.idf .photo-in input{ padding:8px 10px; font-size:13px; }
+.idf .wide{ grid-column:1 / -1; }
+.id-prev{ display:flex; gap:16px; flex-wrap:wrap; justify-content:center;
+  background:radial-gradient(circle at 50% 0%,#F4F6FC,#DFE4F2); border:1px solid var(--pp-line);
+  border-radius:16px; padding:20px 12px; margin-bottom:16px; }
+.id-prev .bdg{ zoom:1.25; box-shadow:0 10px 26px -8px rgba(17,24,70,.35); }
+@media (max-width:420px){ .id-prev .bdg{ zoom:1.05; } }
+.id-list{ display:flex; flex-direction:column; gap:8px; margin-top:6px; }
+.id-row{ display:flex; align-items:center; gap:10px; padding:10px 12px;
+  border:1px solid var(--pp-line); border-radius:12px; background:#fff; }
+.id-row .sw{ width:6px; height:34px; border-radius:4px; flex:none; }
+.id-row .av{ width:30px; height:38px; object-fit:cover; border-radius:6px; flex:none; }
+.id-row .t{ flex:1; min-width:0; }
+.id-row .t b{ display:block; font-size:14px; }
+.id-row .t span{ font-size:12px; color:var(--pp-mute); }
+.id-row .ltr{ direction:ltr; unicode-bidi:isolate; }
+.id-row button{ border:1px solid var(--pp-line); background:#fff; border-radius:9px;
+  width:34px; height:34px; cursor:pointer; font-size:15px; color:var(--pp-mute); }
+.id-row button.dl{ color:#C0304A; }
+
+/* أرشيف أوامر الشغل في لوحة الإدارة */
+.wo-op{ border:1px solid var(--pp-line); background:#fff; border-radius:9px;
+  min-width:38px; height:34px; cursor:pointer; font-size:12px; font-weight:700;
+  color:var(--pp-navy); flex:none; padding:0 6px; font-family:inherit; }
+.wo-op:disabled{ opacity:.5; }
+.wo-b{ font-style:normal; font-size:11px; border-radius:6px; padding:1px 6px;
+  background:#E8EDFB; color:var(--pp-navy); margin-inline-start:4px; white-space:nowrap; }
+.wo-b.cloud{ background:#E4F5EF; color:#12805F; }
+.wo-b.none{ background:#FBE7EA; color:#C0304A; }
+.arch-t .ltr{ direction:ltr; unicode-bidi:isolate; }
+
+/* ══════════ الطباعة المباشرة ══════════ */
+@media screen{
+  #paper{ display:none; }
+}
+@media print{
+  @page{ size:A4 portrait; margin:0; }
+  html,body{ background:#fff !important; margin:0 !important; padding:0 !important; }
+  body.printing > *{ display:none !important; }
+  body.printing > #paper{ display:block !important; }
+  #paper .sheet-a4,
+  #paper .cards-a4{
+    box-shadow:none !important; margin:0 !important;
+    page-break-after:always; break-after:page;
+  }
+  #paper .sheet-a4:last-child,
+  #paper .cards-a4:last-child{ page-break-after:auto; break-after:auto; }
+  *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+}
