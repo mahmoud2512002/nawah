@@ -1151,3 +1151,119 @@ body.is-tech .tab span, body.is-admin .tab span{ font-size:9px; }
 .tab span{ max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .track-row{ flex-wrap:wrap; }
 .track-row input{ flex:1 1 160px; }
+
+/* ══════════════════════════════════════════════════════════════
+   الطلبات المستلمة — لوحة الإدارة
+   ══════════════════════════════════════════════════════════════ */
+
+/* الاسم والموبايل في نموذج الطلب */
+.contact-row{ margin-top:4px; }
+.contact-row .fld{ margin-top:12px; }
+
+/* عدد الطلبات الجديدة على زرار «الإدارة» وعلى التبويب */
+.tab .count{
+  position:absolute; top:7px; inset-inline-end:calc(50% - 22px);
+  min-width:18px; height:18px; padding:0 5px; border-radius:999px;
+  background:var(--urgent); color:#fff; border:2px solid #fff;
+  font-style:normal; font-size:10px; font-weight:700; line-height:14px; text-align:center;
+}
+.chip-n{
+  display:inline-block; min-width:18px; margin-inline-start:4px; padding:0 5px;
+  border-radius:999px; background:var(--urgent); color:#fff;
+  font-style:normal; font-size:10.5px; font-weight:700; line-height:18px; text-align:center;
+}
+
+/* تنبيه طلب جديد أعلى الشاشة */
+.adm-alert{
+  position:fixed; z-index:80; top:calc(10px + env(safe-area-inset-top));
+  inset-inline:10px; margin-inline:auto; max-width:500px;
+  display:flex; align-items:center; gap:10px;
+  background:var(--navy-900); color:#fff; border-radius:16px;
+  padding:10px 10px 10px 12px; box-shadow:0 18px 40px -14px rgba(17,24,70,.7);
+  border:1px solid rgba(255,255,255,.12);
+  animation:alertIn .35s cubic-bezier(.2,.9,.3,1.2) both;
+}
+.adm-alert[hidden]{ display:none; }
+.adm-alert.urgent{ background:#7E1628; }
+@keyframes alertIn{ from{ opacity:0; transform:translateY(-16px) scale(.98); } to{ opacity:1; transform:none; } }
+.aa-ic{
+  flex:none; width:36px; height:36px; border-radius:11px; display:grid; place-items:center;
+  background:rgba(242,183,5,.18); color:var(--volt);
+}
+.aa-ic svg{ width:20px; height:20px; }
+.aa-t{ flex:1; min-width:0; display:flex; flex-direction:column; }
+.aa-t b{ font-size:13.5px; font-weight:600; }
+.aa-t span{ font-size:11.5px; opacity:.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.adm-alert .btn{ padding:8px 14px; font-size:13px; flex:none; }
+.aa-x{ flex:none; background:none; border:0; color:rgba(255,255,255,.6); font-size:15px; cursor:pointer; padding:6px; }
+
+/* بطاقة الإشعارات */
+.inb-notif p{ margin:0; }
+.inb-notif-ops{ display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+
+/* فلاتر الحالة */
+.inb-filters{ margin-top:12px; }
+.inb-filters button{
+  font-family:inherit; border:0; background:var(--surface); cursor:pointer;
+  padding:11px 4px; text-align:center; display:flex; flex-direction:column; align-items:center;
+}
+.inb-filters button.on{ background:var(--navy); }
+.inb-filters button.on b, .inb-filters button.on span{ color:#fff; }
+.inb-filters button.hot:not(.on) b{ color:var(--urgent); }
+.inb-filters span{ line-height:1.3; }
+
+/* صف الطلب */
+.arch.inb{ width:100%; font-family:inherit; text-align:start; cursor:pointer; }
+.arch.inb:active{ background:var(--sky-soft); }
+.arch.inb.is-new{ background:#FFF8E6; border-color:#F3D98A; }
+.arch.inb .arch-t b, .arch.inb .arch-t > span{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.inb-r{ display:flex; flex-direction:column; align-items:flex-end; gap:3px; flex:none; }
+.inb-r small{ font-size:10px; color:var(--muted); white-space:nowrap; }
+.st-hot{ background:var(--urgent); color:#fff; }
+.inb-r .st{ font-style:normal; }
+.empty.small{ padding:26px 10px; }
+.empty.small svg{ width:46px; height:46px; }
+
+/* شاشة الطلب عند الإدارة */
+#areqBox{ display:flex; flex-direction:column; gap:18px; }
+.areq-ops{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.areq-ops .btn{ flex:1 1 140px; text-decoration:none; }
+.areq-stage{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.areq-stage .stage-sel{ max-width:none; font-size:13px; padding:9px 12px; padding-inline-end:26px; }
+
+.tpicks{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; }
+.tpick{
+  font-family:inherit; cursor:pointer; text-align:start;
+  display:grid; grid-template-columns:auto 1fr; column-gap:9px; align-items:center;
+  border:1.5px solid var(--line); background:var(--surface-2);
+  border-radius:13px; padding:10px 11px; color:var(--ink);
+  transition:border-color .15s ease, background .15s ease;
+}
+.tpick i{
+  grid-row:span 2; width:22px; height:22px; border-radius:7px;
+  border:1.5px solid var(--line); background:#fff;
+  display:grid; place-items:center; font-style:normal; font-size:13px; font-weight:700; color:#fff;
+}
+.tpick b{ font-size:13.5px; font-weight:600; }
+.tpick small{ font-size:10.5px; color:var(--muted); }
+.tpick.on{ border-color:var(--navy); background:var(--sky-soft); }
+.tpick.on i{ background:var(--navy); border-color:var(--navy); }
+.btn[disabled]{ opacity:.5; cursor:not-allowed; }
+
+/* الفنيين حسب القسم */
+.btn-sm{ padding:6px 11px; font-size:12px; border-radius:10px; }
+.tech-dept{ margin-top:14px; }
+.tech-dept > header{
+  display:flex; align-items:center; gap:9px; margin-bottom:8px;
+  padding-bottom:8px; border-bottom:1px solid var(--line-soft);
+}
+.tech-dept > header .ic{ width:30px; height:30px; border-radius:9px; display:grid; place-items:center; flex:none; }
+.tech-dept > header .ic svg{ width:16px; height:16px; }
+.tech-dept > header b{ font-size:14px; color:var(--navy); }
+.tech-dept > header em{ font-style:normal; font-size:11.5px; color:var(--muted); flex:1; }
+.tech-dept .adm-list:empty{ display:none; }
+
+/* شريط التنقل: الأعمدة متساوية ومفيش تبويب يطلع برا الشاشة */
+body .tabbar{ grid-template-columns:repeat(5,minmax(0,1fr)); }
+body.is-admin .tabbar, body.is-tech .tabbar{ grid-template-columns:repeat(6,minmax(0,1fr)); }
+body.is-tech.is-admin .tabbar{ grid-template-columns:repeat(7,minmax(0,1fr)); }

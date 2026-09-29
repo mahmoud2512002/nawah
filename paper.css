@@ -386,3 +386,21 @@
   #paper .cards-a4:last-child{ page-break-after:auto; break-after:auto; }
   *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
 }
+
+/* تليفونات الفنيين في سطر واحد */
+.wo-kv dd.wo-nowrap{ white-space:nowrap; font-size:.92em; }
+
+/* أكتر من فنيين: الأسماء بخط أصغر */
+.wo-kv dd.wo-many{ font-size:.86em; line-height:1.55; }
+
+/* الورقة بتتضيّق خطوة خطوة لو المحتوى زاد عن صفحة (fitWO) */
+.sheet-a4.wo[data-tight] .wo-body{ gap:1.8mm; padding-top:3.5mm; }
+.sheet-a4.wo[data-tight] .wo-card{ padding:2.2mm 4.2mm; }
+.sheet-a4.wo[data-tight] .wo-line i.tall{ height:7.5mm; }
+.sheet-a4.wo[data-tight="2"] .wo-kv, .sheet-a4.wo[data-tight="3"] .wo-kv, .sheet-a4.wo[data-tight="4"] .wo-kv{ font-size:9pt; gap:.8mm 3.5mm; }
+.sheet-a4.wo[data-tight="2"] .wo-line i, .sheet-a4.wo[data-tight="3"] .wo-line i, .sheet-a4.wo[data-tight="4"] .wo-line i{ height:4.6mm; }
+.sheet-a4.wo[data-tight="3"] .wo-desc, .sheet-a4.wo[data-tight="4"] .wo-desc{ font-size:9pt; line-height:1.6; }
+.sheet-a4.wo[data-tight="3"] .wo-line i.tall, .sheet-a4.wo[data-tight="4"] .wo-line i.tall{ height:6mm; }
+.sheet-a4.wo[data-tight="4"] .wo-tiles{ gap:2mm; }
+.sheet-a4.wo[data-tight="4"] .wo-checks{ margin-top:1.6mm; font-size:8.8pt; }
+.sheet-a4.wo[data-tight="4"] .wo-warn{ padding:1.6mm 4mm; font-size:8.5pt; }

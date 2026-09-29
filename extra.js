@@ -59,25 +59,46 @@ const NOTIF = {
 
   off() { store.set('notify', false); toast(T('notif.off')); renderSettings(); },
 
-  show(title, body) {
+  show(title, body, opts) {
     if (!this.on) return;
-    try {
-      const n = new Notification(title, {
-        body, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png',
-        lang: LANG, dir: LANGS[LANG].dir, tag: 'nawah'
-      });
-      n.onclick = () => { window.focus(); n.close(); };
-    } catch (e) { /* some browsers only allow this from a service worker */ }
+    sysNotify(title, body, Object.assign({ tag: 'nawah' }, opts || {}));
   }
 };
+
+/* إشعار النظام — عن طريق الـ service worker الأول لأن كروم على
+   أندرويد مش بيسمح بـ new Notification من الصفحة نفسها. */
+async function sysNotify(title, body, opts) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+  const o = Object.assign({
+    body, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png',
+    lang: LANG, dir: LANGS[LANG].dir
+  }, opts || {});
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await Promise.race([
+        navigator.serviceWorker.getRegistration(),
+        new Promise((ok) => setTimeout(() => ok(null), 1500))
+      ]);
+      if (reg && reg.showNotification) { await reg.showNotification(title, o); return true; }
+    }
+  } catch (e) { /* نجرّب الطريقة العادية */ }
+  try {
+    const n = new Notification(title, o);
+    n.onclick = () => { window.focus(); n.close(); if (o.data && o.data.no && typeof openAReq === 'function') openAReq(o.data.no); };
+    return true;
+  } catch (e) { return false; }
+}
 
 /* watch the rows the server pushes and speak up when they matter to me */
 function onLiveChange(payload) {
   const rec = payload && (payload.record || payload.new);
   if (!rec) return;
 
+  /* the admin: a new request arrived, or one changed */
+  if (isAdmin && typeof inboxLive === 'function') inboxLive(payload, rec);
+
   /* a technician: a job landed on me */
-  if (TECH && rec.tech_id === TECH.id && (rec.stage | 0) <= 1) {
+  if (TECH && techIdsOf(rec).indexOf(TECH.id) > -1 && (rec.stage | 0) <= 1) {
     NOTIF.show(T('notif.jobT'), (rec.svc ? C(svcById(rec.svc), 'name') + ' · ' : '')
       + T('lbl.building') + ' ' + rec.block + ' / ' + T('lbl.flat') + ' ' + rec.flat);
     renderTech();

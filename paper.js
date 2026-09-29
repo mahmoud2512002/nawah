@@ -2,8 +2,9 @@
    نواة المستقبل — الأوراق الرسمية
 
    ١) أمر الشغل
-      يصدر تلقائياً مع كل طلب جديد، ويتحوّل فوراً إلى ملف PDF
-      يُحفظ في الأرشيف باسم رقم البحث (مثل S12.pdf):
+      تصدره الإدارة لما تسند الطلب لفني (أو أكتر) من فنيي القسم،
+      ويتحوّل فوراً إلى ملف PDF يُحفظ في الأرشيف باسم رقم البحث
+      (مثل S12.pdf) — والساكن مبيشوفوش:
         • على الجهاز نفسه (IndexedDB) — يفتح حتى بدون إنترنت.
         • وفي الأرشيف السحابي (Supabase Storage) لو السيرفر مفعّل.
       الورقة فيها رقم البحث ورقم أمر الشغل والتاريخ والموقع بالتفصيل
@@ -61,6 +62,22 @@ const AN = (o, f) => (o && o[f || 'name']) || '';
 
 const inkIcon = (s, color, w) => svg(iconOf(s), w || 1.8).replace(/currentColor/g, color);
 
+/* ══════════ ضبط أمر الشغل على صفحة واحدة ══════════
+   لو الورقة زادت (وصف طويل، أو فنيين كتير على نفس الطلب)
+   بنضيّق المسافات والخط خطوة خطوة لحد ما كل حاجة تدخل في A4. */
+function fitWO(root) {
+  (root || document).querySelectorAll('.sheet-a4.wo').forEach((sheet) => {
+    const body = sheet.querySelector('.wo-body');
+    if (!body) return;
+    let k = 0;
+    sheet.removeAttribute('data-tight');
+    while (body.scrollHeight > body.clientHeight + 1 && k < 4) {
+      k++;
+      sheet.setAttribute('data-tight', String(k));
+    }
+  });
+}
+
 /* ══════════ محرّك PDF ══════════
    الورقة بتترسم في حاوية خارج الشاشة، وكل صفحة A4 تتحوّل صورة
    عالية الدقة وتتجمع في ملف PDF واحد. الخط العربي بيترسم
@@ -87,6 +104,7 @@ async function htmlToPDF(html) {
   try {
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
     await imagesReady(host);
+    fitWO(host);
 
     const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
     const pages = host.querySelectorAll('.sheet-a4, .cards-a4');
@@ -140,6 +158,7 @@ async function printPaper(html, fileName) {
   const el = paperRoot();
   el.innerHTML = html;
   await imagesReady(el);
+  fitWO(el);
 
   const prevTitle = document.title;
   if (fileName) document.title = fileName;
@@ -193,7 +212,7 @@ const PDFDB = {
 
 /* كل الطلبات اللي اتعرضت في الأرشيف أو شاشة الفني — عشان نقدر نفتح أمر شغلها */
 const WO_POOL = {};
-const woFind = (no) => requests.find((x) => x.no === no) || WO_POOL[no] || null;
+const woFind = (no) => (isAdmin && WO_POOL[no]) || requests.find((x) => x.no === no) || WO_POOL[no] || null;
 const woFile = (r) => 'امر-شغل-' + r.no + '.pdf';
 
 /* إصدار أمر الشغل وحفظه — بيتنادى تلقائياً مع كل طلب جديد */
@@ -207,6 +226,7 @@ async function archiveWO(r) {
   };
   await PDFDB.put(rec);
   await pushWO(rec);
+  if (typeof inboxTouch === 'function' && rec.cloud) inboxTouch(r.no, { wo_pdf: rec.cloud });
   return rec;
 }
 
@@ -227,13 +247,15 @@ async function flushWO() {
   for (const rec of all) if (!rec.cloud) await pushWO(rec);
 }
 
-/* هات ملف أمر الشغل: من الجهاز ← من السحابة ← أو اصدره دلوقتي */
-async function woPDF(r) {
+/* هات ملف أمر الشغل: من الجهاز ← من السحابة ← أو اصدره دلوقتي.
+   الإدارة دايماً بتصدر نسخة جديدة (fresh) عشان الورقة تطلع بآخر إسناد. */
+async function woPDF(r, fresh) {
+  if (fresh || isAdmin) return (await archiveWO(r)).blob;
   const local = await PDFDB.get(r.no);
-  if (local && local.blob) return local.blob;
+  if (local && local.blob && TECH == null) return local.blob;
   if (DB.ready()) {
     try {
-      const res = await fetch(DB.pdfURL(r.no + '.pdf'), { cache: 'no-store' });
+      const res = await fetch(DB.pdfURL(r.no + '.pdf') + '?v=' + Date.now(), { cache: 'no-store' });
       if (res.ok) {
         const blob = await res.blob();
         await PDFDB.put({ no: r.no, wo: r.wo, svc: r.svc, at: r.at, block: r.block, flat: r.flat,
@@ -267,7 +289,10 @@ function woSheet(r) {
   const s  = svcById(r.svc);
   const d  = deptColor(r.svc);
   const p  = CFG.priorities[r.prio] || CFG.priorities.normal;
-  const t  = techById(r.tech_id);
+  const techs = techIdsOf(r).map(techById).filter(Boolean);
+  const techNames = techs.length ? techs.map((x) => x.name).join('، ') : (r.tech_name || '');
+  const techTels  = techs.length <= 2 ? techs.map((x) => String(x.phone || '').trim()).filter(Boolean).join('، ') : '';
+  const techCards = techs.map(cardNoOfTech).filter(Boolean).join('  ·  ');
   const dt = woDate(r);
   const prioInk = r.prio === 'urgent' ? '#C0304A' : r.prio === 'high' ? '#B86F14' : '#12805F';
   const line = (CFG.lines && CFG.lines[0] && CFG.lines[0].tel) || '';
@@ -340,17 +365,18 @@ function woSheet(r) {
       <div class="wo-card">
         <h3>مقدّم الطلب</h3>
         <dl class="wo-kv">
-          <dt>الاسم</dt><dd>${esc(r.name || r.resident_name || (profile && profile.name) || '—')}</dd>
+          <dt>الاسم</dt><dd>${esc(r.name || r.resident_name || '—')}</dd>
           <dt>الهاتف</dt><dd class="ltr">${esc(r.phone || '—')}</dd>
           <dt>الصفة</dt><dd>ساكن بالمدينة السكنية</dd>
         </dl>
       </div>
       <div class="wo-card">
-        <h3>الفني المكلّف</h3>
+        <h3>${techs.length > 1 ? 'الفنيون المكلّفون' : 'الفني المكلّف'}</h3>
         <dl class="wo-kv">
-          <dt>الاسم</dt><dd>${esc((t && t.name) || r.tech_name || '………………………………')}</dd>
-          <dt>التخصص</dt><dd>${esc(t ? (t.svcs || []).map((x) => AN(svcById(x), 'name')).join(' · ') : AN(s, 'name'))}</dd>
-          <dt>رقم الكارنيه</dt><dd class="ltr">${esc(cardNoOfTech(t) || '……………………')}</dd>
+          <dt>${techs.length > 1 ? 'الأسماء' : 'الاسم'}</dt><dd class="${techs.length > 2 ? 'wo-many' : ''}">${esc(techNames || '………………………………')}</dd>
+          ${techTels ? `<dt>الهاتف</dt><dd class="wo-nowrap">${esc(techTels)}</dd>`
+                     : `<dt>التخصص</dt><dd>${esc(AN(s, 'name'))}</dd>`}
+          <dt>رقم الكارنيه</dt><dd class="ltr">${esc(techCards || '……………………')}</dd>
         </dl>
       </div>
     </div>
@@ -409,6 +435,8 @@ function cardNoOfTech(t) {
 let lastWO = null;
 
 async function renderWO(no) {
+  /* أمر الشغل للإدارة والفني بس — الساكن يتابع برقم البحث */
+  if (!isAdmin && !TECH) { go('detail', no); return; }
   const r = woFind(no) || woFind(lastWO) || requests[0];
   const box = $('#woBox');
   if (!r) {
@@ -416,7 +444,7 @@ async function renderWO(no) {
     return;
   }
   lastWO = r.no;
-  $('#v-wo .back').dataset.go = isAdmin && !requests.find((x) => x.no === r.no) ? 'admin' : 'list';
+  $('#v-wo .back').dataset.go = isAdmin ? 'admin' : TECH ? 'tech' : 'list';
 
   await needQR();
   const rec = await PDFDB.get(r.no);
@@ -437,8 +465,8 @@ async function renderWO(no) {
       <p class="wo-state" id="woState">${esc(state)}</p>
     </div>
     <div class="pp-note">
-      صدر أمر الشغل تلقائياً مع تسجيل الطلب، وحُفظ في الأرشيف ملفَّ PDF باسم رقم البحث.
-      يحمله الفني معه عند التوجه للوحدة — حمّله أو شاركه أو اطبعه من الأزرار التالية.
+      أمر الشغل بيتحفظ في الأرشيف ملفَّ PDF باسم رقم البحث، ويحمله الفني معه عند
+      التوجه للوحدة — حمّله أو شاركه أو اطبعه من الأزرار التالية.
     </div>
     <div class="pp-bar">
       <button class="btn btn-primary" type="button" data-wo="pdf" data-no="${esc(r.no)}">تحميل PDF</button>
@@ -469,6 +497,7 @@ async function renderWO(no) {
 function fitPaper() {
   $$('.pp-stage').forEach((stage) => {
     if (!stage.offsetParent) return;
+    fitWO(stage);
     const fit = stage.querySelector('.pp-fit');
     const sheet = fit && fit.firstElementChild;
     if (!sheet) return;
@@ -493,7 +522,7 @@ async function admOrders(box) {
   } else {
     rows = requests.slice();
   }
-  rows.forEach((r) => { if (!requests.find((x) => x.no === r.no)) WO_POOL[r.no] = r; });
+  rows.forEach((r) => { WO_POOL[r.no] = r; });
 
   const local = {};
   (await PDFDB.all()).forEach((x) => { local[x.no] = x; });
@@ -507,7 +536,7 @@ async function admOrders(box) {
   const saved = rows.filter((r) => local[r.no] || r.wo_pdf).length;
 
   box.innerHTML = `
-    <p class="fine mb">كل طلب يصدر له أمر شغل تلقائياً ويُحفظ ملفَّ PDF باسم رقم البحث.
+    <p class="fine mb">أمر الشغل بيصدر لما تسند الطلب من «الطلبات المستلمة»، ويتحفظ ملفَّ PDF باسم رقم البحث.
       ابحث برقم البحث (مثل S12) أو رقم أمر الشغل أو رقم العمارة.</p>
     <div class="arch-stats">
       <div><b>${num(rows.length)}</b><span>أمر شغل</span></div>

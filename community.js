@@ -61,7 +61,7 @@ async function trackRequest(no) {
     </div>
 
     <dl class="kv">
-      <dt>${esc(T('det.wo'))}</dt><dd class="ltr">${esc(r.wo || '—')}</dd>
+      ${isAdmin || TECH ? `<dt>${esc(T('det.wo'))}</dt><dd class="ltr">${esc(r.wo || '—')}</dd>` : ''}
       <dt>${esc(T('wa.prio'))}</dt><dd>${esc(C(p, 'label'))} · ${esc(C(p, 'sla'))}</dd>
       ${r.tech_name ? `<dt>${esc(T('exp.tech'))}</dt><dd>${esc(r.tech_name)}</dd>` : ''}
       <dt>${esc(T('exp.date'))}</dt><dd>${esc(new Date(r.at).toLocaleString(locale()))}</dd>
@@ -199,7 +199,8 @@ async function adminSetStage(no, stage) {
     const local = requests.find((x) => x.no === no);
     if (local) { local.stage = stage; store.set('requests', requests); }
     toast(T('tech.updated'));
-    renderAdmin();
+    if (typeof inboxTouch === 'function') inboxTouch(no, { stage });
+    if (!$('#v-areq').hidden) renderAReq(no); else renderAdmin();
     renderCounters();
   } catch (e) { toast(T('err.net')); }
 }

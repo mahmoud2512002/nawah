@@ -9,7 +9,7 @@
      • من غير نت                  →  آخر نسخة متخزنة تشتغل عادي
    ══════════════════════════════════════════════════════════════ */
 
-const VERSION = 'nawah-v6';
+const VERSION = 'nawah-v7';
 
 /* يتخزنوا من أول زيارة عشان الشغل بدون إنترنت */
 const SHELL = [
@@ -23,6 +23,7 @@ const SHELL = [
   './extra.js',
   './community.js',
   './paper.js',
+  './inbox.js',
   './paper.css',
   './vendor/html2canvas.min.js',
   './vendor/jspdf.umd.min.js',
@@ -96,4 +97,22 @@ self.addEventListener('fetch', (e) => {
           .then((hit) => hit || Response.error())
       )
   );
+});
+
+/* الضغط على إشعار «طلب جديد» بيفتح الطلب نفسه في لوحة الإدارة */
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const data = e.notification.data || {};
+  const url = new URL(data.url || './', self.registration.scope).href;
+  e.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) {
+      if (c.url.indexOf(self.registration.scope) === 0) {
+        try { await c.focus(); } catch (err) {}
+        if (data.no) c.postMessage({ type: 'open-req', no: data.no });
+        return;
+      }
+    }
+    if (self.clients.openWindow) await self.clients.openWindow(url);
+  })());
 });

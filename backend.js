@@ -60,10 +60,23 @@ const DB = {
     return this.req('requests?select=*&phone=eq.' + encodeURIComponent(phone) + '&order=created_at.desc');
   },
 
-  // what one technician has been assigned
+  // what one technician has been assigned — alone or with others on the same job
   async techRequests(techId) {
-    return this.req('requests?select=*&tech_id=eq.' + encodeURIComponent(techId)
+    const id = String(techId || '');
+    const or = '(tech_id.eq.' + id + ',tech_id.like.*|' + id + '|*)';
+    return this.req('requests?select=*&or=' + encodeURIComponent(or)
                     + '&stage=lt.4&order=created_at.desc');
+  },
+
+  // الطلبات اللي وصلت بعد آخر طلب شافته الإدارة — بالرقم التسلسلي للسيرفر
+  // (مش بالتاريخ، عشان ساعة موبايل الساكن ممكن تكون متأخرة)
+  async newAfter(id) {
+    return this.req('requests?select=*&id=gt.' + (Number(id) || 0) + '&order=id.asc&limit=50');
+  },
+
+  async one(no) {
+    const rows = await this.req('requests?select=*&no=eq.' + encodeURIComponent(no));
+    return rows && rows[0];
   },
 
   async between(fromISO, toISO) {
@@ -82,6 +95,15 @@ const DB = {
 
   setStage(no, stage, extra) { return this.patch(no, Object.assign({ stage }, extra || {})); },
   assign(no, techId, techName) { return this.patch(no, { tech_id: techId, tech_name: techName, stage: 1 }); },
+
+  /* إسناد الطلب لفني أو أكثر — الإدارة بتختار من فنيي القسم */
+  assignMany(no, techs, stage) {
+    return this.patch(no, {
+      tech_id: packTechs(techs.map((t) => t.id)),
+      tech_name: techs.map((t) => t.name).join('، ') || null,
+      stage: stage
+    });
+  },
   rate(no, stars, note) { return this.patch(no, { rating: stars, rating_note: note || '' }); },
 
   /* ── رقم الطلب: عدّاد مركزي لكل قسم ──────────────────
@@ -111,6 +133,7 @@ const DB = {
         'apikey': this.key,
         'Authorization': 'Bearer ' + this.key,
         'Content-Type': 'application/pdf',
+        'cache-control': 'no-cache',
         'x-upsert': 'true'
       },
       body: blob
@@ -154,12 +177,22 @@ const DB = {
   },
 
   /* ── live updates ─────────────────────────────────── */
-  // Supabase realtime over websocket; falls back silently.
+  // Supabase realtime over websocket. Opened only for the admin and the
+  // technician (residents poll their own requests instead), and it
+  // reconnects by itself if the connection drops.
+  _ws: null,
+  _hb: null,
+  _subs: [],
+
   live(onChange) {
     if (!this.ready() || !window.WebSocket) return null;
+    if (onChange && this._subs.indexOf(onChange) < 0) this._subs.push(onChange);
+    if (this._ws && this._ws.readyState <= 1) return this._ws;
+
     try {
       const host = this.url.replace(/^https?:\/\//, '');
       const ws = new WebSocket('wss://' + host + '/realtime/v1/websocket?apikey=' + this.key + '&vsn=1.0.0');
+      this._ws = ws;
       let ref = 0;
       const send = (o) => ws.readyState === 1 && ws.send(JSON.stringify(o));
 
@@ -168,18 +201,45 @@ const DB = {
           topic: 'realtime:public:requests', event: 'phx_join', ref: String(++ref),
           payload: { config: { postgres_changes: [{ event: '*', schema: 'public', table: 'requests' }] } }
         });
-        setInterval(() => send({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: String(++ref) }), 28000);
+        clearInterval(this._hb);
+        this._hb = setInterval(() => send({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: String(++ref) }), 28000);
       };
       ws.onmessage = (m) => {
         try {
           const d = JSON.parse(m.data);
-          if (d.event === 'postgres_changes' && d.payload && d.payload.data) onChange(d.payload.data);
+          if (d.event === 'postgres_changes' && d.payload && d.payload.data) {
+            this._subs.forEach((fn) => { try { fn(d.payload.data); } catch (e) {} });
+          }
         } catch (e) {}
+      };
+      ws.onclose = () => {
+        clearInterval(this._hb);
+        if (this._ws === ws) this._ws = null;
+        if (this._subs.length) setTimeout(() => this.live(), 5000);   // رجّع الاتصال
       };
       return ws;
     } catch (e) { return null; }
+  },
+
+  unlive() {
+    this._subs = [];
+    clearInterval(this._hb);
+    if (this._ws) { try { this._ws.close(); } catch (e) {} }
+    this._ws = null;
   }
 };
+
+/* ── فني واحد أو أكثر على نفس الطلب ─────────────────────
+   فني واحد يتخزّن زي ما هو (t1) عشان الطلبات القديمة تفضل شغالة،
+   وأكتر من فني يتخزّنوا كده: |t1|t3|                        */
+function packTechs(ids) {
+  const list = (ids || []).map((x) => String(x || '').trim()).filter(Boolean);
+  if (!list.length) return null;
+  return list.length === 1 ? list[0] : '|' + list.join('|') + '|';
+}
+function techIdsOf(r) {
+  return String((r && r.tech_id) || '').split('|').map((x) => x.trim()).filter(Boolean);
+}
 
 /* app shape → database row */
 function toRow(r) {
@@ -199,7 +259,7 @@ function toRow(r) {
 /* database row → app shape */
 function fromRow(x) {
   return {
-    no: x.no, wo: x.wo, svc: x.svc, prio: x.prio,
+    id: x.id, no: x.no, wo: x.wo, svc: x.svc, prio: x.prio,
     area: x.area, block: x.block, floor: x.floor, flat: x.flat,
     spot: x.spot, desc: x.descr, phone: x.phone, name: x.resident_name,
     stage: x.stage || 0, tech_id: x.tech_id, tech_name: x.tech_name,

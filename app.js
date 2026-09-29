@@ -342,14 +342,14 @@ function renderLock() {
 }
 
 /* ══════════ navigation ══════════ */
-const VIEWS = ['home', 'new', 'list', 'detail', 'emergency', 'settings', 'admin', 'tech', 'cm', 'wo', 'cards'];
+const VIEWS = ['home', 'new', 'list', 'detail', 'emergency', 'settings', 'admin', 'areq', 'tech', 'cm', 'wo', 'cards'];
 
 function go(name, arg) {
-  if (name === 'admin' && !isAdmin) { askPassword(); return; }
-  if (name === 'cards' && !isAdmin) { askPassword(); return; }
+  if ((name === 'admin' || name === 'areq' || name === 'cards') && !isAdmin) { askPassword(); return; }
+  if (name === 'wo' && !isAdmin && !TECH) name = 'detail';          // أمر الشغل مش للساكن
   if (name === 'tech' && !TECH) { askTech(); return; }
   VIEWS.forEach((v) => { const el = $('#v-' + v); if (el) el.hidden = (v !== name); });
-  $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.go === name));
+  $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.go === (name === 'areq' ? 'admin' : name)));
   window.scrollTo(0, 0);
 
   if (name === 'list')      renderList();
@@ -357,6 +357,7 @@ function go(name, arg) {
   if (name === 'emergency') renderEmergency();
   if (name === 'settings')  renderSettings();
   if (name === 'admin')     renderAdmin();
+  if (name === 'areq')      renderAReq(arg);
   if (name === 'tech')      renderTech();
   if (name === 'cm')        loadComments();
   if (name === 'home')      renderCounters();
@@ -460,16 +461,19 @@ async function onSubmit(e) {
   const block = $('#fBlock').value.trim();
   const flat  = $('#fFlat').value.trim();
   const phone = $('#fPhone').value.replace(/\D/g, '');
+  const name  = $('#fResName').value.replace(/\s+/g, ' ').trim();
 
   $('#errSvc').hidden   = !!draft.svc;
   $('#errLoc').hidden   = !!(area && block && flat);
   $('#errPrio').hidden  = !!draft.prio;
+  $('#errName').hidden  = name.length >= 3;
   $('#errPhone').hidden = phone.length === 11;
 
   let bad = null;
   if (!draft.svc) bad = '#errSvc';
   else if (!(area && block && flat)) bad = '#errLoc';
   else if (!draft.prio) bad = '#errPrio';
+  else if (name.length < 3) bad = '#errName';
   else if (phone.length !== 11) bad = '#errPhone';
 
   if (bad) {
@@ -490,13 +494,13 @@ async function onSubmit(e) {
   requests.unshift({
     no, svc:draft.svc, prio:draft.prio, area, block, flat,
     floor:$('#fFloor').value.trim(), spot:$('#fSpot').value.trim(),
-    desc:$('#fDesc').value.trim(), phone, shots:draft.shots.slice(),
+    desc:$('#fDesc').value.trim(), phone, name, shots:draft.shots.slice(),
     stage:0, wo:'WO-' + now.getFullYear() + '-' + no,
     at:now.toISOString(), woAt:now.toISOString()
   });
   if (!store.set('requests', requests)) { requests.shift(); return; }
 
-  profile = Object.assign({}, profile, { phone, block, flat, area });
+  profile = Object.assign({}, profile, { phone, name, block, flat, area });
   store.set('profile', profile);
 
   const p = CFG.priorities[draft.prio];
@@ -505,9 +509,8 @@ async function onSubmit(e) {
   $('#doneSla').textContent = T('done.prio') + ': ' + C(p,'label') + ' — ' + T('done.target') + ' ' + C(p,'sla');
   $('#doneSheet').hidden = false;
   $('#btnDoneTrack').onclick = () => { $('#doneSheet').hidden = true; go('detail', no); };
-  $('#btnDoneWO').onclick = () => { $('#doneSheet').hidden = true; go('wo', no); };
   wireSend(saved);
-  finishDelivery(saved).then(() => autoWO(saved));
+  finishDelivery(saved);          // أمر الشغل بتصدره الإدارة عند الإسناد — مش عند الساكن
 
   e.target.reset();
   draft = { svc:'', prio:'', shots:[] };
@@ -516,6 +519,7 @@ async function onSubmit(e) {
   renderShots();
   renderCounters();
   renderSelects();
+  prefill();
 }
 
 /* ══════════ sending the request to the company ══════════
@@ -528,7 +532,6 @@ function requestText(r) {
     '*طلب صيانة — ' + CFG.brand.company + '*',
     '',
     'رقم الطلب: ' + r.no,
-    'أمر الشغل: ' + r.wo,
     'الخدمة: ' + s.name,
     'الأولوية: ' + p.label + ' (' + p.sla + ')',
     '',
@@ -536,6 +539,7 @@ function requestText(r) {
     (r.spot ? 'مكان العطل: ' + r.spot : ''),
     '',
     'الوصف: ' + (r.desc || '—'),
+    (r.name ? 'الاسم: ' + r.name : ''),
     'للتواصل: ' + r.phone,
     '',
     'التاريخ: ' + d.toLocaleString(locale())
@@ -642,15 +646,10 @@ function renderDetail(no) {
       <dl class="kv">
         <dt>${esc(T('det.location'))}</dt><dd>${esc(r.area)} ${esc(T('lbl.building'))} ${num(esc(r.block))}${r.floor ? ' / ' + esc(T('lbl.floor')) + ' ' + num(esc(r.floor)) : ''} / ${esc(T('lbl.flat'))} ${num(esc(r.flat))}</dd>
         ${r.spot ? `<dt>${esc(T('det.spot'))}</dt><dd>${esc(r.spot)}</dd>` : ''}
-        <dt>${esc(T('det.wo'))}</dt><dd class="ltr">${esc(r.wo)}</dd>
         <dt>${esc(T('det.contact'))}</dt><dd><a href="tel:${esc(r.phone)}">${num(esc(r.phone))}</a></dd>
       </dl>
       ${r.desc ? `<p class="desc">${esc(r.desc)}</p>` : ''}
       ${r.shots && r.shots.length ? `<div class="d-shots">${r.shots.map((x,i)=>`<img src="${x}" alt="صورة العطل ${num(i+1)}">`).join('')}</div>` : ''}
-    </section>
-    <section class="card wo-link"><h3>أمر الشغل</h3>
-      <p>صدر لطلبك أمر شغل رقم <b class="ltr">${esc(r.wo)}</b> ومحفوظ في الأرشيف ملف PDF — الفني يحمله معه عند الزيارة.</p>
-      <button class="btn btn-primary btn-block" type="button" data-wo="open" data-no="${esc(r.no)}">📄 عرض أمر الشغل وتحميله PDF</button>
     </section>
     <section class="card"><h3>إرسال / متابعة مع الإدارة</h3>
       <p>لو لسه مبعتّش الطلب للإدارة، أو عايز تسأل عن حالته:</p>
@@ -660,7 +659,7 @@ function renderDetail(no) {
       </button>
     </section>
     <section class="card"><h3>تنبيه</h3>
-      <p>لا تسمح لأي فني بمباشرة العمل قبل التأكد من بطاقة التعريف الشخصية والزي الموحد وأمر الشغل المعتمد. رقم أمر الشغل الخاص بطلبك موضّح بالأعلى.</p>
+      <p>لا تسمح لأي فني بمباشرة العمل قبل التأكد من بطاقة التعريف الشخصية والزي الموحد وأمر الشغل المعتمد من الإدارة، وأن رقم البحث المطبوع عليه هو رقم طلبك: <b class="ltr">${esc(r.no)}</b>.</p>
     </section>`;
 }
 
@@ -700,6 +699,7 @@ function renderSettings() {
 
 function prefill() {
   if (profile.phone && !$('#fPhone').value) $('#fPhone').value = profile.phone;
+  if (profile.name  && !$('#fResName').value) $('#fResName').value = profile.name;
   if (profile.block && !$('#fBlock').value) $('#fBlock').value = profile.block;
   if (profile.flat  && !$('#fFlat').value)  $('#fFlat').value  = profile.flat;
   if (profile.area  && !$('#fArea').value)  $('#fArea').value  = profile.area;
@@ -732,11 +732,13 @@ async function tryPassword() {
   $('.shell').hidden = false;
   $('#adminTab').hidden = false;
   document.body.classList.add('is-admin');
-  go('admin');
+  startAdminWatch();
+  if (PENDING_REQ) { const n = PENDING_REQ; PENDING_REQ = ''; openAReq(n); }
+  else go('admin');
   toast(T('pass.welcome'));
 }
 
-let adminTab = 'services';
+let adminTab = 'inbox';
 
 function renderAdmin() {
   $('#pubDot').hidden = !hasDraft();
@@ -750,6 +752,7 @@ function renderAdmin() {
   if (adminTab === 'tech')      box.innerHTML = admTech();
   if (adminTab === 'backend')   box.innerHTML = admBackend();
   if (adminTab === 'ann')       box.innerHTML = admAnn();
+  if (adminTab === 'inbox')     { if (!box.querySelector('.inbox')) box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admInbox(box); }
   if (adminTab === 'archive')   { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admArchive(box); }
   if (adminTab === 'orders')    { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admOrders(box); }
 }
@@ -802,12 +805,16 @@ function admLines() {
   <h4 class="adm-h">وصول الطلبات للإدارة</h4>
   <div class="note-box">
     <b>الطلب بيروح فين؟</b>
-    <p>الطلب بيتحفظ على موبايل الساكن ويأخذ رقماً فوراً، وبعدها بيضغط زرار واحد
-    فيتفتح واتساب برسالة جاهزة فيها كل بيانات الطلب ويبعتها للرقم ده.
-    اكتب رقم واتساب إدارة الصيانة بالصيغة الدولية بدون <span class="ltr">+</span>.</p>
+    <p>الطلب بيوصل فوراً لتبويب «الطلبات المستلمة» في لوحة الإدارة مع إشعار وصوت.
+    وكمان تقدر تخلي واتساب يتفتح عند الساكن برسالة جاهزة لرقم الإدارة ده — نسخة احتياطية
+    توصلك حتى لو لوحة الإدارة مقفولة. اكتب الرقم بالصيغة الدولية بدون <span class="ltr">+</span>.</p>
   </div>
   <label class="fld"><span>واتساب إدارة الصيانة</span>
-    <input class="ltr" data-c="intake.whatsapp" value="${esc((CFG.intake&&CFG.intake.whatsapp)||'')}" inputmode="tel" placeholder="201012345678"></label>`;
+    <input class="ltr" data-c="intake.whatsapp" value="${esc((CFG.intake&&CFG.intake.whatsapp)||'')}" inputmode="tel" placeholder="201012345678"></label>
+  <button class="row-btn mt" type="button" data-act="autosend">
+    <span>فتح واتساب تلقائياً عند الساكن بعد الإرسال</span>
+    <em>${CFG.intake && CFG.intake.autoSend === false ? 'مقفول' : 'شغال'}</em>
+  </button>`;
 }
 
 function admContent() {
@@ -910,21 +917,47 @@ function admPublish() {
 
 
 
-/* ── admin: technicians ── */
-function admTech() {
-  const list = CFG.technicians || [];
-  return `<p class="fine mb">${esc(T('adm.techHint'))}</p>
-  <div class="adm-list">
-    ${list.map((t, i) => `<div class="adm-item tech">
-      <input class="adm-name" value="${esc(t.name)}" data-tk="name" data-i="${i}" aria-label="${esc(T('set.name'))}">
-      <input class="adm-tel ltr" value="${esc(t.phone || '')}" data-tk="phone" data-i="${i}" inputmode="tel" placeholder="201012345678">
-      <input class="adm-pin ltr" value="${esc(t.pin || '')}" data-tk="pin" data-i="${i}" inputmode="numeric" placeholder="${esc(T('adm.pin'))}">
+/* ── admin: technicians — متجمّعين حسب القسم ──
+   كل قسم ليه فنيينه، وتقدر تضيف أكتر من فني للقسم الواحد.
+   الفني ممكن يبقى في أكتر من قسم (زرار الأقسام تحت اسمه). */
+function techRow(t, i) {
+  return `<div class="adm-item tech">
+      <input class="adm-name" value="${esc(t.name)}" data-tk="name" data-i="${i}" placeholder="اسم الفني" aria-label="اسم الفني">
+      <input class="adm-tel ltr" value="${esc(t.phone || '')}" data-tk="phone" data-i="${i}" inputmode="tel" placeholder="واتساب: 2010XXXXXXXX" aria-label="موبايل الفني">
+      <input class="adm-pin ltr" value="${esc(t.pin || '')}" data-tk="pin" data-i="${i}" inputmode="numeric" placeholder="${esc(T('adm.pin'))}" aria-label="الرقم السري">
       <div class="trades">${CFG.services.map((sv) => `
         <button type="button" class="trade ${(t.svcs||[]).indexOf(sv.id)>-1?'on':''}" data-trade="${esc(sv.id)}" data-i="${i}">${esc(C(sv,'name'))}</button>`).join('')}</div>
       <div class="adm-ops"><button type="button" data-act="tdel" data-i="${i}" class="dl" aria-label="${esc(T('a11y.del'))}">\u2715</button></div>
-    </div>`).join('')}
+    </div>`;
+}
+
+function admTech() {
+  const list = CFG.technicians || [];
+  const idx = (t) => list.indexOf(t);
+  const loose = list.filter((t) => !(t.svcs || []).length);
+
+  return `<p class="fine mb">ضيف لكل قسم الفنيين والصنايعية بتوعه — مفيش حد للعدد، اضغط «+ فني» جنب القسم لكل واحد.
+    لما تفتح طلب من «الطلبات المستلمة» هيظهرلك فنيين القسم بتاعه بس وتختار واحد أو أكتر.
+    اللي شغال في أكتر من قسم فعّل أقسامه من الأزرار تحت اسمه.</p>
+  <div class="note-box">
+    <b>الإسناد بيشتغل فوراً من جهازك</b>
+    <p>لكن عشان الفني الجديد يقدر يدخل «مهامي» من موبايله برقمه السري، لازم «نشر» بعد الإضافة.</p>
   </div>
-  <button class="btn btn-quiet btn-block mt" type="button" data-act="addtech">${esc(T('adm.addTech'))}</button>`;
+  ${CFG.services.map((sv) => {
+    const mine = list.filter((t) => (t.svcs || []).indexOf(sv.id) > -1);
+    const c = colorOf(sv);
+    return `<section class="tech-dept">
+      <header>
+        <span class="ic" style="background:${c.tint};color:${c.ink}">${svg(iconOf(sv))}</span>
+        <b>${esc(C(sv,'name'))}</b>
+        <em>${mine.length ? num(mine.length) + ' ' + (mine.length === 1 ? 'فني' : 'فنيين') : 'لا يوجد فنيين'}</em>
+        <button class="btn btn-quiet btn-sm" type="button" data-act="addtech" data-svc="${esc(sv.id)}">+ فني</button>
+      </header>
+      <div class="adm-list">${mine.map((t) => techRow(t, idx(t))).join('')}</div>
+    </section>`;
+  }).join('')}
+  ${loose.length ? `<section class="tech-dept"><header><b>بدون قسم</b><em>${num(loose.length)}</em></header>
+    <div class="adm-list">${loose.map((t) => techRow(t, idx(t))).join('')}</div></section>` : ''}`;
 }
 
 /* ── admin: server + export + QR ── */
@@ -1058,12 +1091,21 @@ function initAdmin() {
       toast(T(want ? 'adm.lockedLocal' : 'adm.openedLocal'));
     }
 
+    if (act === 'autosend') { CFG.intake = CFG.intake || {}; CFG.intake.autoSend = CFG.intake.autoSend === false; }
     if (act === 'addann')  { (CFG.announcements = CFG.announcements || []).push({ id: uid(), date: '', title: '', body: '' }); }
     if (act === 'adel')    { CFG.announcements.splice(i, 1); }
     if (act === 'aup')     { const A = CFG.announcements; if (i > 0) { const x = A[i]; A[i] = A[i-1]; A[i-1] = x; } }
     if (act === 'adown')   { const A = CFG.announcements; if (i < A.length - 1) { const x = A[i]; A[i] = A[i+1]; A[i+1] = x; } }
-    if (act === 'addtech') { (CFG.technicians = CFG.technicians || []).push({ id: uid(), name: T('adm.newTech'), phone: '', pin: '0000', svcs: [] }); }
-    if (act === 'tdel')    { if (!confirm(T('adm.delAsk') + ' \u00ab' + CFG.technicians[i].name + '\u00bb\u061f')) return; CFG.technicians.splice(i, 1); }
+    if (act === 'addtech') {
+      const svcFor = b.dataset.svc ? [b.dataset.svc] : [];
+      (CFG.technicians = CFG.technicians || []).push({ id: 't' + Date.now().toString(36), name: '', phone: '',
+        pin: String(Math.floor(1000 + Math.random() * 9000)), svcs: svcFor });
+      saveDraft(); renderAdmin();
+      const fresh = $$('#admBody [data-tk="name"]').filter((x) => !x.value).pop();
+      if (fresh) { fresh.focus(); fresh.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      return;
+    }
+    if (act === 'tdel')    { if (!confirm(T('adm.delAsk') + ' \u00ab' + (CFG.technicians[i].name || '') + '\u00bb\u061f')) return; CFG.technicians.splice(i, 1); }
     if (b.dataset.trade) {
       const t2 = CFG.technicians[i];
       t2.svcs = t2.svcs || [];
@@ -1096,6 +1138,7 @@ function initAdmin() {
       sessionStorage.removeItem('nawah.pin');
       $('#adminTab').hidden = true;
       document.body.classList.remove('is-admin');
+      stopAdminWatch();
       if (CFG.locked) { renderLock(); return; }
       go('home');
       toast(T('adm.loggedOut'));
@@ -1333,7 +1376,9 @@ async function finishDelivery(r) {
   const extra = [];
 
   if (res.archived) {
-    extra.push(`<p class="sent-ok">\u2713 ${esc(T('foot.synced'))}${res.tech ? ' \u00b7 ' + esc(res.tech.name) : ''}</p>`);
+    extra.push(`<p class="sent-ok">\u2713 ${esc(T('done.arrived'))}</p>`);
+    const hint = box.querySelector('.send-hint');
+    if (hint) hint.textContent = T('done.waOptional');
   } else if (!DB.ready()) {
     extra.push(`<p class="sent-warn">${esc(T('foot.local'))}</p>`);
   } else {
@@ -1357,21 +1402,6 @@ async function finishDelivery(r) {
 
   paintFooter();
   renderCounters();
-}
-
-/* ══════════ أمر الشغل التلقائي ══════════
-   بعد تسجيل الطلب مباشرة: يتحوّل أمر الشغل PDF ويتحفظ في الأرشيف
-   (على الجهاز + السحابة) باسم رقم البحث. */
-async function autoWO(r) {
-  const el = $('#doneWOState');
-  try {
-    const rec = await archiveWO(r);
-    if (el) el.textContent = rec.cloud
-      ? '✓ أمر الشغل محفوظ في الأرشيف باسم ' + r.no + '.pdf'
-      : '✓ أمر الشغل محفوظ على هذا الجهاز، ويُرفع للأرشيف عند توفر الاتصال.';
-  } catch (e) {
-    if (el) el.textContent = 'أمر الشغل جاهز — اضغط الزر لعرضه وتحميله.';
-  }
 }
 
 /* ══════════ technician wiring ══════════ */
@@ -1413,6 +1443,7 @@ async function bootExtras() {
   initTech();
   initCommunity();
   initCards();
+  initInbox();
   flushWO();
 
   /* ?t=S12 من رمز QR المطبوع على أمر الشغل */
@@ -1426,13 +1457,14 @@ async function bootExtras() {
   renderAnn();
   startPolling();
 
-  /* live updates for the admin and technician views */
-  if (DB.ready()) {
-    DB.live((payload) => {
-      onLiveChange(payload);
-      if (!$('#v-admin').hidden && adminTab === 'archive') renderAdmin();
-    });
-  }
+  /* التحديث اللحظي للإدارة والفني بس — الساكن بيتابع طلباته بالـ polling
+     (ده بيوفّر اتصالات السيرفر: الخطة المجانية ٢٠٠ اتصال لحظي في نفس الوقت) */
+  if (DB.ready() && TECH) DB.live(onLiveChange);
+  if (isAdmin) startAdminWatch();
+
+  /* ?req=S12 — من إشعار طلب جديد */
+  const qReq = new URLSearchParams(location.search).get('req');
+  if (qReq) { if (isAdmin) openAReq(qReq); else { PENDING_REQ = qReq; askPassword(); } }
 }
 
 /* ══════════ boot ══════════ */
@@ -1471,7 +1503,10 @@ async function bootExtras() {
   await bootExtras();
 
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', async () => {
+    /* التسجيل بعد تحميل الصفحة — ولو الصفحة خلصت تحميل قبل ما نوصل هنا
+       (وده اللي بيحصل غالباً بعد انتظار الإعدادات من السيرفر) نسجّل على طول */
+    const hadController = !!navigator.serviceWorker.controller;
+    const registerSW = async () => {
       try {
         const reg = await navigator.serviceWorker.register('sw.js');
         reg.addEventListener('updatefound', () => {
@@ -1484,7 +1519,8 @@ async function bootExtras() {
             }
           });
         });
-        let reloaded = false;
+        /* ريفرش مرة واحدة لما تنزل نسخة جديدة — مش في أول زيارة خالص */
+        let reloaded = !hadController;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (reloaded) return;
           reloaded = true;
@@ -1492,6 +1528,8 @@ async function bootExtras() {
         });
         reg.update();
       } catch (e) {}
-    });
+    };
+    if (document.readyState === 'complete') registerSW();
+    else window.addEventListener('load', registerSW);
   }
 })();

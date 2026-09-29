@@ -28,15 +28,9 @@ async function deliver(r) {
     QUEUE.add(light);
   }
 
-  /* notify the technician on duty for this trade */
-  const t = autoTech(r.svc);
-  if (t) {
-    r.tech_id = t.id;
-    r.tech_name = t.name;
-    if (archived) { try { await DB.assign(r.no, t.id, t.name); r.stage = 1; } catch (e) {} }
-  }
-
-  return { archived, tech: t };
+  /* الإسناد مبقاش تلقائي: الطلب بيوصل للإدارة في «الطلبات المستلمة»
+     مع إشعار، والإدارة هي اللي بتختار فني (أو أكتر) من فنيي القسم. */
+  return { archived, tech: null };
 }
 
 function waLink(number, text) {
@@ -57,6 +51,7 @@ function techText(r) {
       (r.floor ? ' / ' + T('lbl.floor') + ' ' + r.floor : '') + ' / ' + T('lbl.flat') + ' ' + r.flat,
     (r.spot ? T('wa.spot') + ': ' + r.spot : ''),
     T('wa.desc') + ': ' + (r.desc || '—'),
+    (r.name ? 'مقدّم الطلب: ' + r.name : ''),
     T('wa.contact') + ': ' + r.phone
   ].filter(Boolean).join(String.fromCharCode(10));
 }
@@ -127,6 +122,7 @@ function techLogin() {
   $('#techSheet').hidden = true;
   $('#techTab').hidden = false;
   document.body.classList.add('is-tech');
+  if (DB.ready()) DB.live(onLiveChange);
   go('tech');
 }
 
@@ -141,7 +137,9 @@ async function renderTech() {
     try { rows = (await DB.techRequests(TECH.id)).map(fromRow); }
     catch (e) { rows = []; }
   } else {
-    rows = requests.filter((r) => r.tech_id === TECH.id && r.stage < 4);
+    rows = requests.concat(Object.values(WO_POOL))
+      .filter((r, k, all) => all.findIndex((y) => y.no === r.no) === k)
+      .filter((r) => techIdsOf(r).indexOf(TECH.id) > -1 && r.stage < 4);
   }
 
   $('#techDot').hidden = !rows.length;

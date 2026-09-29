@@ -248,7 +248,11 @@
             <div class="shot-list" id="shotList"></div>
           </div>
 
-          <label class="fld"><span data-t="new.phone">رقم الموبايل</span><input id="fPhone" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX"></label>
+          <div class="grid-2 contact-row">
+            <label class="fld"><span data-t="new.name">الاسم</span><input id="fResName" autocomplete="name" data-tp="new.namePh" placeholder="الاسم بالكامل"></label>
+            <label class="fld"><span data-t="new.phone">رقم الموبايل</span><input id="fPhone" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX"></label>
+          </div>
+          <p class="err" id="errName" hidden data-t="err.name">اكتب اسمك (٣ حروف على الأقل)</p>
           <p class="err" id="errPhone" hidden data-t="err.phone">اكتب رقم موبايل صحيح (١١ رقم)</p>
         </fieldset>
 
@@ -314,6 +318,7 @@
         <div class="rows">
           <button class="row-btn" id="btnInstall2" type="button"><span data-t="set.install">تثبيت</span><em id="installState">متاح</em></button>
           <button class="row-btn" data-go="admin" type="button"><span data-t="set.adminRow">لوحة الإدارة</span><em id="adminRow">تحتاج كلمة مرور</em></button>
+          <button class="row-btn" data-go="tech" type="button"><span data-t="tech.login">دخول الفني</span><em data-t="tech.pinRow">برقم سري</em></button>
           <button class="row-btn" id="btnNotif" type="button">
             <span data-t="notif.row">إشعارات تحديث الطلب</span><em id="notifState">—</em>
           </button>
@@ -334,20 +339,31 @@
       </div>
 
       <div class="adm-tabs" id="admTabs">
-        <button class="chip on" data-tab="services" type="button" data-t="adm.tServices">الخدمات</button>
+        <button class="chip on" data-tab="inbox" type="button">الطلبات المستلمة <i class="chip-n" id="inboxCount" hidden>0</i></button>
+        <button class="chip" data-tab="orders" type="button">أوامر الشغل</button>
+        <button class="chip" data-tab="tech" type="button" data-t="adm.tTech">الفنيين</button>
+        <button class="chip chip-go" data-go="cards" type="button">الكارنيهات</button>
+        <button class="chip" data-tab="services" type="button" data-t="adm.tServices">الخدمات</button>
         <button class="chip" data-tab="lines" type="button" data-t="adm.tLines">الأرقام</button>
         <button class="chip" data-tab="content" type="button" data-t="adm.tContent">النصوص</button>
         <button class="chip" data-tab="ann" type="button" data-t="adm.tAnn">الإعلانات</button>
-        <button class="chip" data-tab="tech" type="button" data-t="adm.tTech">الفنيين</button>
-        <button class="chip" data-tab="archive" type="button" data-t="adm.tArchive">الأرشيف</button>
-        <button class="chip" data-tab="orders" type="button">أوامر الشغل</button>
-        <button class="chip chip-go" data-go="cards" type="button">الكارنيهات</button>
         <button class="chip" data-tab="backend" type="button" data-t="adm.tBackend">السيرفر</button>
         <button class="chip" data-tab="lock" type="button" data-t="adm.tLock">القفل</button>
         <button class="chip" data-tab="publish" type="button" data-t="adm.tPublish">نشر</button>
       </div>
 
       <div class="card adm-card" id="admBody"></div>
+    </section>
+
+    <!-- ══════════ ADMIN: ONE REQUEST ══════════ -->
+    <section class="view" id="v-areq" hidden>
+      <div class="vhead">
+        <button class="back" data-go="admin" type="button" data-ta="a11y.back">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <h2>تفاصيل الطلب</h2>
+      </div>
+      <div id="areqBox"></div>
     </section>
 
     <!-- ══════════ WORK ORDER SHEET ══════════ -->
@@ -447,10 +463,13 @@
     </button>
     <button class="tab" data-go="admin" type="button" id="adminTab" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 2.8 20 6v6c0 4.6-3.3 7.7-8 9.2C7.3 19.7 4 16.6 4 12V6l8-3.2Z"/><path d="m9 12 2.2 2.2L15.4 10"/></svg>
-      <span data-t="nav.admin">الإدارة</span>
+      <span data-t="nav.admin">الإدارة</span><i class="count" id="admCount" hidden></i>
     </button>
   </nav>
 </div>
+
+<!-- تنبيه طلب جديد للإدارة -->
+<div class="adm-alert" id="admAlert" hidden role="alert" aria-live="assertive"></div>
 
 <!-- password sheet -->
 <div class="sheet-wrap" id="passSheet" hidden>
@@ -502,8 +521,6 @@
       </button>
       <button class="btn btn-quiet btn-block" id="btnCopyReq" type="button">📋 <span data-t="done.copy">نسخ</span></button>
     </div>
-    <button class="btn btn-primary btn-block" id="btnDoneWO" type="button">📄 أمر الشغل — عرض وتحميل PDF</button>
-    <p class="fine center" id="doneWOState">صدر أمر الشغل تلقائياً وجاري حفظه في الأرشيف…</p>
     <button class="btn btn-quiet btn-block" id="btnDoneTrack" type="button" data-t="done.track">تابع حالة الطلب</button>
   </div>
 </div>
@@ -546,6 +563,7 @@
 <script src="extra.js"></script>
 <script src="community.js"></script>
 <script src="paper.js"></script>
+<script src="inbox.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
