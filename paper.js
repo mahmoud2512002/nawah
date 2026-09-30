@@ -215,14 +215,25 @@ const WO_POOL = {};
 const woFind = (no) => (isAdmin && WO_POOL[no]) || requests.find((x) => x.no === no) || WO_POOL[no] || null;
 const woFile = (r) => 'امر-شغل-' + r.no + '.pdf';
 
-/* إصدار أمر الشغل وحفظه — بيتنادى تلقائياً مع كل طلب جديد */
+/* بصمة محتوى أمر الشغل — لو اتغيّر الإسناد أو رقم الكارنيه أو بيانات الطلب
+   بعد الإصدار، الإدارة بتعيد إصداره تلقائياً عشان الفني ياخد آخر نسخة */
+function woSig(r) {
+  const cards = techIdsOf(r).map((id) => cardNoFor(id, techById(id))).join(',');
+  return [r.tech_id || '', r.tech_name || '', cards, r.prio, r.area, r.block, r.floor, r.flat,
+          r.desc || '', r.name || r.resident_name || '', r.phone || ''].join('¦');
+}
+
+/* إصدار أمر الشغل وحفظه — من جهاز الإدارة بس */
 async function archiveWO(r) {
   await needQR();
+  await loadTechCards();
+  const missing = techsWithoutCard(techIdsOf(r));
+  if (missing.length) throw new Error('no-card:' + noCardMsg(missing));
   const blob = await htmlToPDF(woSheet(r));
   const rec = {
     no: r.no, wo: r.wo, svc: r.svc, at: r.at,
     block: r.block, flat: r.flat, made: new Date().toISOString(),
-    blob, cloud: ''
+    blob, cloud: '', sig: woSig(r)
   };
   await PDFDB.put(rec);
   await pushWO(rec);
@@ -242,7 +253,7 @@ async function pushWO(rec) {
 }
 
 async function flushWO() {
-  if (!DB.ready()) return;
+  if (!DB.ready() || (TECH && !isAdmin)) return;          // الرفع للأرشيف من جهاز الإدارة بس
   const all = await PDFDB.all();
   for (const rec of all) if (!rec.cloud) await pushWO(rec);
 }
@@ -251,6 +262,7 @@ async function flushWO() {
    الإدارة دايماً بتصدر نسخة جديدة (fresh) عشان الورقة تطلع بآخر إسناد. */
 async function woPDF(r, fresh) {
   if (fresh || isAdmin) return (await archiveWO(r)).blob;
+  if (TECH) return issuedPDF(r);
   const local = await PDFDB.get(r.no);
   if (local && local.blob && TECH == null) return local.blob;
   if (DB.ready()) {
@@ -266,6 +278,40 @@ async function woPDF(r, fresh) {
     } catch (e) { /* نصدره من جديد */ }
   }
   return (await archiveWO(r)).blob;
+}
+
+/* ══════════ أمر الشغل عند الفني = اللي أصدرته الإدارة بس ══════════
+   موبايل الفني مبيصدرش أمر شغل ولا بيعدّل فيه: بيجيب آخر نسخة أصدرتها
+   الإدارة من الأرشيف السحابي، وبيحتفظ بيها عشان تفتح من غير إنترنت. */
+async function issuedURL(r) {
+  if (DB.ready() && TECH) {
+    try {
+      const rows = (await DB.techRequests(TECH.id)) || [];
+      const x = rows.find((y) => y.no === r.no);
+      if (x) r.wo_pdf = x.wo_pdf || '';
+    } catch (e) { /* نكمّل باللي عندنا */ }
+  }
+  return r.wo_pdf || '';
+}
+
+async function issuedPDF(r) {
+  const url = await issuedURL(r);
+  const kept = await PDFDB.get(r.no);
+  const mine = kept && kept.issued && kept.blob ? kept : null;
+  if (url && mine && mine.cloud === url) return mine.blob;          // نفس النسخة اللي عندنا
+  if (url) {
+    try {
+      const res = await fetch(url + (url.indexOf('?') > -1 ? '&' : '?') + 'v=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const blob = await res.blob();
+        await PDFDB.put({ no: r.no, wo: r.wo, svc: r.svc, at: r.at, block: r.block, flat: r.flat,
+                          made: new Date().toISOString(), blob, cloud: url, issued: true });
+        return blob;
+      }
+    } catch (e) { /* النت فاصل */ }
+  }
+  if (mine) return mine.blob;                                       // آخر نسخة من الإدارة وصلتنا
+  throw new Error(url ? 'offline' : 'not-issued');
 }
 
 /* ══════════ ١ · أمر الشغل ══════════ */
@@ -297,7 +343,8 @@ function woSheet(r) {
   const techs = techIdsOf(r).map(techById).filter(Boolean);
   const techNames = techs.length ? techs.map((x) => x.name).join('، ') : (r.tech_name || '');
   const techTels  = techs.length <= 2 ? techs.map((x) => String(x.phone || '').trim()).filter(Boolean).join('، ') : '';
-  const techCards = techs.map(cardNoOfTech).filter(Boolean).join('  ·  ');
+  const techCards = techIdsOf(r).map((id) => cardNoFor(id, techById(id)))
+    .filter((x, k, all) => x && all.indexOf(x) === k).join('  ·  ');
   const dt = woDate(r);
   const prioInk = r.prio === 'urgent' ? '#C0304A' : r.prio === 'high' ? '#B86F14' : '#12805F';
   const line = (CFG.lines && CFG.lines[0] && CFG.lines[0].tel) || '';
@@ -429,11 +476,167 @@ function woSheet(r) {
 </div>`;
 }
 
-/* رقم كارنيه الفني لو الإدارة أصدرته من نفس الجهاز */
-function cardNoOfTech(t) {
-  if (!t) return '';
-  const c = idCards().find((x) => x.tech === t.id || (x.name && x.name === t.name));
-  return c ? c.no : '';
+/* ══════════ رقم كارنيه الفني في أمر الشغل ══════════
+   الكارنيهات نفسها على جهاز الإدارة بس، لكن رقم الكارنيه قصاد كل فني
+   بيتسجّل في السيرفر (tech-cards.sql) عشان يظهر في أمر الشغل على أي
+   جهاز: موبايل الفني، وأي جهاز إدارة تاني. */
+
+/* الاسم بعد توحيد الهمزات والتاء المربوطة والمسافات — عشان المطابقة */
+const normName = (s) => String(s || '').replace(/[\u064B-\u0652\u0640]/g, '')
+  .replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim();
+
+/* كارنيه الفني على الجهاز ده: المربوط بيه، أو اللي بنفس اسمه */
+function localCardOf(t) {
+  if (!t) return null;
+  const list = idCards().filter((c) => c.no);
+  const linked = list.find((c) => c.tech && c.tech === t.id);
+  if (linked) return linked;
+  const n = normName(t.name);
+  if (!n) return null;
+  const free = list.filter((c) => !c.tech || c.tech === t.id);
+  const same = free.filter((c) => normName(c.name) === n);
+  if (same.length === 1) return same[0];
+  /* «محمد عبدالله» في الفنيين = «محمد عبدالله السيد أحمد» في الكارنيه */
+  if (!same.length && n.split(' ').length >= 2) {
+    const pre = free.filter((c) => normName(c.name).indexOf(n + ' ') === 0);
+    if (pre.length === 1) return pre[0];
+  }
+  return null;
+}
+
+let SERVER_CARDS = null;
+let CARDS_AT = 0;
+function serverCards() {
+  if (!SERVER_CARDS) SERVER_CARDS = store.get('techCardNos2', {}) || {};
+  return SERVER_CARDS;
+}
+
+function cardNoFor(id, t) {
+  const c = localCardOf(t);
+  return (c && c.no) || serverCards()[id] || '';
+}
+
+/* أرقام الكارنيهات من السيرفر — مرة كل دقيقة بالكتير */
+async function loadTechCards(force) {
+  if (!DB.ready() || (!force && Date.now() - CARDS_AT < 60000)) return serverCards();
+  try {
+    const rows = await Promise.race([
+      DB.rpc('tech_card_nos', {}),
+      new Promise((ok, no) => setTimeout(() => no(new Error('slow')), 6000))
+    ]);
+    const m = {};
+    (rows || []).forEach((x) => { if (x && x.tech_id && x.card_no) m[x.tech_id] = x.card_no; });
+    SERVER_CARDS = m;
+    CARDS_AT = Date.now();
+    store.set('techCardNos2', m);
+  } catch (e) { /* الملف لسه ما اتشغّلش أو النت فاصل — نكمّل باللي عندنا */ }
+  return serverCards();
+}
+
+/* رقم كارنيه كل فني حسب الكارنيهات اللي على الجهاز ده */
+function localCardMap() {
+  const map = {};
+  (CFG.technicians || []).forEach((t) => { const c = localCardOf(t); if (c) map[t.id] = c.no; });
+  idCards().forEach((c) => { if (c.tech && c.no && !map[c.tech]) map[c.tech] = c.no; });
+  return map;
+}
+
+/* جهاز الإدارة المعتمد بيرفع الأرقام للسيرفر.
+   drop: فنيين كان ليهم كارنيه واتمسح أو اتفك ربطه */
+async function syncTechCards(drop) {
+  if (typeof DEVICE_OK === 'undefined' || !DEVICE_OK || !DEVICE || !DB.ready()) return;
+  const map = localCardMap();
+  const cards = Object.keys(map).map((id) => ({ tech: id, no: map[id] }));
+  const gone = (drop || []).filter((id) => !map[id]);
+  if (cards.length || gone.length) {
+    try { await DB.rpc('save_tech_cards', Object.assign(DB.cred(), { cards, gone })); }
+    catch (e) { /* يتعاد مع أول تحميل للفنيين */ }
+  }
+  await loadTechCards(true);
+  paintTechCards();
+  setTimeout(refreshIssuedWOs, 3000);
+}
+
+/* ── رقم الكارنيه = رقم كارنيه متعمل فعلاً ──
+   الفني مبياخدش رقم إلا لما الإدارة تطلعله كارنيه من «الكارنيهات»، والرقم
+   بيتاخد من الكارنيه نفسه. فني من غير كارنيه مينفعش يتكتب في أمر شغل. */
+const cardPrefix = (code) => code + '-' + String(new Date().getFullYear()).slice(-2);
+
+function maxSerial(prefix) {
+  let hi = 0;
+  idCards().map((c) => c.no).concat(Object.values(serverCards())).forEach((no) => {
+    no = String(no || '');
+    if (no.indexOf(prefix + '-') === 0) hi = Math.max(hi, Number(no.split('-').pop()) || 0);
+  });
+  return hi;
+}
+
+/* الفنيين المكلّفين بالطلب اللي مش معاهم كارنيه */
+function techsWithoutCard(ids) {
+  return (ids || []).map((id) => techById(id) || { id, name: '' })
+    .filter((t) => !cardNoFor(t.id, techById(t.id)));
+}
+function noCardMsg(list) {
+  const names = list.map((t) => '«' + (t.name || 'فني بدون اسم') + '»').join('، ');
+  return 'مينفعش يطلع أمر الشغل — ' + names + (list.length > 1 ? ' مش معاهم كارنيه' : ' مش معاه كارنيه')
+    + '. اطلع الكارنيه الأول من «الكارنيهات».';
+}
+
+/* يفتح «الكارنيهات» على كارنيه الفني — أو كارنيه جديد باسمه وقسمه */
+function openCardFor(id) {
+  const t = techById(id);
+  if (!t) return;
+  const c = localCardOf(t);
+  if (c) cardDraft = Object.assign(blankCard(), c);
+  else if (serverCards()[id]) { toast('الفني ده كارنيهه متعمل على جهاز إدارة تاني — رقمه ' + serverCards()[id]); return; }
+  else {
+    const svc = (t.svcs || [])[0] || blankCard().svc;
+    cardDraft = Object.assign(blankCard(), { name: t.name || '', tech: id, svc });
+    cardDraft.no = nextCardNo(svc);
+  }
+  go('cards');
+  window.scrollTo(0, 0);
+}
+
+/* رقم الكارنيه جنب كل فني في تبويب «الفنيين» — من غير ما نعيد رسم الصفحة */
+const CARD_OK   = 'background:var(--sky-soft);color:var(--navy)';
+const CARD_NONE = 'background:var(--warn-bg);color:var(--warn)';
+function techCardLabel(id) {
+  const no = cardNoFor(id, techById(id));
+  return no ? 'كارنيه ' + no : '⚠ مفيش كارنيه — اطلعه';
+}
+function techCardStyle(id) { return cardNoFor(id, techById(id)) ? CARD_OK : CARD_NONE; }
+function paintTechCards() {
+  $$('[data-tcard]').forEach((el) => {
+    el.textContent = techCardLabel(el.dataset.tcard);
+    el.style.cssText = el.dataset.base + ';' + techCardStyle(el.dataset.tcard);
+  });
+}
+
+/* الطلبات المفتوحة اللي أمر شغلها اتغيّر محتواه بعد الإصدار (رقم كارنيه
+   اتضاف، إسناد اتغيّر…) — جهاز الإدارة بيعيد إصدارها لوحده في الخلفية،
+   فالفني بياخد آخر نسخة من الإدارة من غير ما حد يفتحها */
+let WO_REFRESHING = false;
+async function refreshIssuedWOs(retry) {
+  if (WO_REFRESHING || !isAdmin || typeof INBOX === 'undefined') return;
+  if (!INBOX.rows.length) { if (!retry) setTimeout(() => refreshIssuedWOs(true), 10000); return; }
+  WO_REFRESHING = true;
+  try {
+    await loadTechCards();
+    const open = INBOX.rows.filter((r) => techIdsOf(r).length && (r.stage | 0) >= 1 && (r.stage | 0) < 4);
+    let n = 0;
+    for (const r of open) {
+      if (n >= 20) break;
+      const rec = await PDFDB.get(r.no);
+      if (!rec || rec.issued || rec.sig === woSig(r)) continue;   // مش صادر من الجهاز ده، أو متحدّث
+      if (techsWithoutCard(techIdsOf(r)).length) continue;
+      try {
+        const done = await archiveWO(r);
+        if (done.cloud && typeof inboxTouch === 'function') inboxTouch(r.no, { wo_pdf: done.cloud });
+        n++;
+      } catch (e) { /* نكمّل الباقي */ }
+    }
+  } finally { WO_REFRESHING = false; }
 }
 
 /* ══════════ شاشة أمر الشغل ══════════ */
@@ -451,13 +654,8 @@ async function renderWO(no) {
   lastWO = r.no;
   $('#v-wo .back').dataset.go = isAdmin ? 'admin' : TECH ? 'tech' : 'list';
 
-  await needQR();
-  const rec = await PDFDB.get(r.no);
-  const state = rec && rec.cloud ? '☁ محفوظ في الأرشيف السحابي وعلى هذا الجهاز'
-              : rec ? '✓ محفوظ في الأرشيف على هذا الجهاز'
-              : '… جاري الحفظ في الأرشيف';
-
-  box.innerHTML = `
+  const techView = !!TECH && !isAdmin;
+  const hero = (state) => `
     <div class="wo-hero">
       <div>
         <span>رقم البحث</span>
@@ -468,7 +666,52 @@ async function renderWO(no) {
         <b class="ltr">${esc(r.wo || '—')}</b>
       </div>
       <p class="wo-state" id="woState">${esc(state)}</p>
+    </div>`;
+
+  /* الفني: النسخة اللي أصدرتها الإدارة بس */
+  if (techView) {
+    box.innerHTML = hero('… جاري التحميل');
+    const url = await issuedURL(r);
+    const kept = await PDFDB.get(r.no);
+    const has = url || (kept && kept.issued);
+    box.innerHTML = hero(has ? '✓ صادر من الإدارة' : 'لسه ما اتصدرش من الإدارة') + (has ? `
+    <div class="pp-note">
+      ده أمر الشغل زي ما أصدرته الإدارة بالظبط — افتحه أو حمّله أو شاركه، وخليه معاك
+      وإنت رايح للوحدة.
     </div>
+    <div class="pp-bar">
+      <button class="btn btn-primary" type="button" data-wo="view" data-no="${esc(r.no)}">فتح أمر الشغل</button>
+      <button class="btn btn-quiet" type="button" data-wo="pdf" data-no="${esc(r.no)}">تحميل PDF</button>
+      ${navigator.canShare ? `<button class="btn btn-quiet" type="button" data-wo="share" data-no="${esc(r.no)}">مشاركة</button>` : ''}
+    </div>` : `
+    <div class="note-box warn">
+      <b>أمر الشغل لسه ما اتصدرش من الإدارة</b>
+      <p>أول ما الإدارة تصدره هيظهر هنا. متبدأش الشغل من غير أمر شغل معتمد.</p>
+    </div>`);
+    return;
+  }
+
+  await needQR();
+  await loadTechCards();
+  const missing = techsWithoutCard(techIdsOf(r));
+  if (missing.length) {
+    box.innerHTML = hero('أمر الشغل مش هيطلع') + `
+    <div class="note-box warn">
+      <b>${esc(noCardMsg(missing))}</b>
+      <p>اطلع كارنيه لكل فني مكلّف، أو غيّر الإسناد لفني معاه كارنيه — وبعدها افتح أمر الشغل تاني.</p>
+    </div>
+    <div class="pp-bar">${missing.map((t) => `<button class="btn btn-primary" type="button" data-wo="mkcard" data-id="${esc(t.id)}" data-no="${esc(r.no)}">اطلع كارنيه ${esc(t.name || '')}</button>`).join('')}</div>`;
+    return;
+  }
+  let rec = await PDFDB.get(r.no);
+  if (rec && rec.issued) rec = null;                       // نسخة جت من السحابة مش إصدار الجهاز ده
+  const stale = !!(rec && techIdsOf(r).length && rec.sig !== woSig(r));
+  const state = stale ? '… جاري تحديث أمر الشغل بآخر بيانات'
+              : rec && rec.cloud ? '☁ محفوظ في الأرشيف السحابي وعلى هذا الجهاز'
+              : rec ? '✓ محفوظ في الأرشيف على هذا الجهاز'
+              : '… جاري الحفظ في الأرشيف';
+
+  box.innerHTML = `${hero(state)}
     <div class="pp-note">
       أمر الشغل بيتحفظ في الأرشيف ملفَّ PDF باسم رقم البحث، ويحمله الفني معه عند
       التوجه للوحدة — حمّله أو شاركه أو اطبعه من الأزرار التالية.
@@ -485,10 +728,11 @@ async function renderWO(no) {
   const imgs = box.querySelectorAll('.pp-fit img');
   imgs.forEach((im) => im.addEventListener('load', fitPaper, { once: true }));
 
-  /* لو الطلب اتفتح قبل ما يتأرشف (طلب قديم مثلاً) — نأرشفه دلوقتي */
-  if (!rec) {
+  /* لو الطلب اتفتح قبل ما يتأرشف، أو اتغيّر بعد الإصدار — نصدره دلوقتي */
+  if (!rec || stale) {
     try {
       const done = await archiveWO(r);
+      if (done.cloud && typeof inboxTouch === 'function') inboxTouch(r.no, { wo_pdf: done.cloud });
       const el = $('#woState');
       if (el) el.textContent = done.cloud ? '☁ محفوظ في الأرشيف السحابي وعلى هذا الجهاز' : '✓ محفوظ في الأرشيف على هذا الجهاز';
     } catch (e) {
@@ -624,12 +868,8 @@ function deptCode(id) {
   return fixed[id] || svcCode(id);
 }
 function nextCardNo(deptId) {
-  const code = deptCode(deptId);
-  const yr = String(new Date().getFullYear()).slice(-2);
-  const nums = idCards().filter((c) => c.svc === deptId)
-    .map((c) => Number(String(c.no || '').split('-').pop()) || 0);
-  const next = (nums.length ? Math.max.apply(null, nums) : 0) + 1;
-  return code + '-' + yr + '-' + String(next).padStart(3, '0');
+  const pre = cardPrefix(deptCode(deptId));
+  return pre + '-' + String(maxSerial(pre) + 1).padStart(3, '0');
 }
 
 function isoToday(addYears) {
@@ -863,9 +1103,19 @@ function wireCards() {
       const before = cardDraft.svc;
       readCardForm();
       if (id === 'cSvc') onDeptChange(before);
-      if (id === 'cTech' && cardDraft.tech && !cardDraft.name) {
+      if (id === 'cTech' && cardDraft.tech) {
         const t = techById(cardDraft.tech);
-        if (t) { cardDraft.name = t.name; $('#cName').value = t.name; }
+        if (t && !cardDraft.name) { cardDraft.name = t.name; $('#cName').value = t.name; }
+        /* الفني ليه رقم كارنيه تلقائي — الكارنيه المطبوع ياخد نفس الرقم */
+        const auto = serverCards()[cardDraft.tech];
+        if (auto) {
+          cardDraft.no = auto; $('#cNo').value = auto;
+          const s0 = t && (t.svcs || [])[0];
+          if (s0 && s0 !== cardDraft.svc) {
+            cardDraft.svc = s0; $('#cSvc').value = s0;
+            $$('#cardsBox .dl-chip').forEach((b) => b.classList.toggle('on', b.dataset.id === s0));
+          }
+        }
       }
       refreshCardPreview();
     });
@@ -961,9 +1211,12 @@ function initCards() {
       if (bad) { err.textContent = bad; err.hidden = false; toast(bad); return; }
       err.hidden = true;
       if (!cardDraft.no) cardDraft.no = nextCardNo(cardDraft.svc);
+      const before = Object.keys(localCardMap());
       const at = list.findIndex((x) => x.id === cardDraft.id);
       if (at > -1) list[at] = cardDraft; else list.push(cardDraft);
       if (!saveCards(list)) return;
+      syncTechCards(before);
+      paintTechCards();
       cardDraft = blankCard();
       renderCards();
       toast('تم حفظ الكارنيه.');
@@ -973,7 +1226,8 @@ function initCards() {
     if (act === 'edit')   { cardDraft = Object.assign(blankCard(), list[i]); renderCards(); window.scrollTo(0, 0); return; }
     if (act === 'del') {
       if (!confirm('حذف كارنيه «' + (list[i].name || '') + '»؟')) return;
-      list.splice(i, 1); saveCards(list); renderCards(); return;
+      const before = Object.keys(localCardMap());
+      list.splice(i, 1); saveCards(list); renderCards(); syncTechCards(before); return;
     }
     if (act === 'print1' || act === 'pdf1') {
       readCardForm();
@@ -1013,12 +1267,24 @@ function initCards() {
       return;
     }
 
+    if (act === 'mkcard') { openCardFor(b.dataset.id); return; }
     const r = woFind(b.dataset.no);
     if (!r) return;
 
     if (act === 'open') { go('wo', r.no); return; }
     if (act === 'wa')   { window.open(waLink(ADMIN_WA() || '', requestText(r)), '_blank', 'noopener'); return; }
-    if (act === 'print') { await needQR(); printPaper(woSheet(r), 'امر-شغل-' + r.no); return; }
+    const techView = !!TECH && !isAdmin;
+    /* الفني بيفتح نسخة الإدارة نفسها — مفيش ورقة بتتعمل على موبايله */
+    if ((act === 'view' || act === 'print') && techView && r.wo_pdf && navigator.onLine !== false) {
+      window.open(r.wo_pdf, '_blank', 'noopener');
+      return;
+    }
+    if (act === 'print' && !techView) {
+      await needQR(); await loadTechCards();
+      const missing = techsWithoutCard(techIdsOf(r));
+      if (missing.length) { toast(noCardMsg(missing)); return; }
+      printPaper(woSheet(r), 'امر-شغل-' + r.no); return;
+    }
 
     const was = b.textContent;
     b.disabled = true;
@@ -1032,7 +1298,11 @@ function initCards() {
         saveBlob(blob, woFile(r));
       }
     } catch (err) {
-      toast('تعذّر إنشاء الملف — استخدم «طباعة» ثم «حفظ كـ PDF».');
+      const why = err && err.message;
+      toast(/^no-card:/.test(why || '') ? why.slice(8)
+          : why === 'not-issued' ? 'أمر الشغل لسه ما اتصدرش من الإدارة'
+          : why === 'offline'    ? 'مفيش إنترنت — افتح أمر الشغل تاني أول ما النت يرجع'
+          : 'تعذّر إنشاء الملف — استخدم «طباعة» ثم «حفظ كـ PDF».');
     } finally {
       b.disabled = false;
       b.textContent = was;

@@ -395,14 +395,28 @@ function pickSvc(id) {
   $('#errSvc').hidden = true;
 }
 
+/* عدّادات الصفحة الرئيسية = كل طلبات المدينة من السيرفر (counters.sql)،
+   أعداد بس من غير أي بيانات شخصية. من غير نت: طلبات الجهاز ده. */
+let HOME_COUNTS = null;
+let HOME_COUNTS_AT = 0;
+function paintCounters() {
+  const c = HOME_COUNTS || {
+    open: requests.filter((r) => r.stage < 2).length,
+    work: requests.filter((r) => r.stage === 2).length,
+    done: requests.filter((r) => r.stage >= 3).length
+  };
+  $('#cOpen').textContent = num(c.open);
+  $('#cWork').textContent = num(c.work);
+  $('#cDone').textContent = num(c.done);
+}
 function renderCounters() {
-  const open = requests.filter((r) => r.stage < 2).length;
-  const work = requests.filter((r) => r.stage === 2).length;
-  const done = requests.filter((r) => r.stage >= 3).length;
-  $('#cOpen').textContent = num(open);
-  $('#cWork').textContent = num(work);
-  $('#cDone').textContent = num(done);
+  paintCounters();
   $('#tabDot').hidden = requests.length === 0;
+  if (!DB.ready() || Date.now() - HOME_COUNTS_AT < 15000) return;
+  HOME_COUNTS_AT = Date.now();
+  DB.rpc('request_stage_counts', {}).then((o) => {
+    if (o && typeof o.open === 'number') { HOME_COUNTS = { open: o.open, work: o.work, done: o.done }; paintCounters(); }
+  }).catch(() => { /* الملف لسه ما اتشغّلش — نفضل على عدّاد الجهاز */ });
 }
 
 function renderSelects() {
@@ -942,7 +956,12 @@ function techRow(t, i) {
       <input class="adm-pin ltr" value="${esc(t.pin || '')}" data-tk="pin" data-i="${i}" inputmode="numeric" placeholder="${esc(T('adm.pin'))}" aria-label="الرقم السري">
       <div class="trades">${CFG.services.map((sv) => `
         <button type="button" class="trade ${(t.svcs||[]).indexOf(sv.id)>-1?'on':''}" data-trade="${esc(sv.id)}" data-i="${i}">${esc(C(sv,'name'))}</button>`).join('')}</div>
-      <div class="adm-ops"><button type="button" data-act="tdel" data-i="${i}" class="dl" aria-label="${esc(T('a11y.del'))}">\u2715</button></div>
+      <div class="adm-ops">
+        <button type="button" data-act="tcard" data-i="${i}" data-tcard="${esc(t.id)}" title="رقم الكارنيه — بيتكتب لوحده في أمر الشغل"
+          data-base="align-self:center;font:inherit;font-size:11.5px;font-weight:600;white-space:nowrap;padding:5px 9px;border:0;border-radius:8px;cursor:pointer"
+          style="align-self:center;font:inherit;font-size:11.5px;font-weight:600;white-space:nowrap;padding:5px 9px;border:0;border-radius:8px;cursor:pointer;${techCardStyle(t.id)}">${esc(techCardLabel(t.id))}</button>
+        <button type="button" data-act="tdel" data-i="${i}" class="dl" aria-label="${esc(T('a11y.del'))}">\u2715</button>
+      </div>
     </div>`;
 }
 
@@ -1139,6 +1158,7 @@ function initAdmin() {
       if (techServer()) { DB.deleteTech(gone.id).catch(() => toast(T('err.net'))); renderAdmin(); return; }
     }
     if (act === 'techimport') { importTechs(b); return; }
+    if (act === 'tcard') { openCardFor(CFG.technicians[i].id); return; }
     if (b.dataset.trade) {
       const t2 = CFG.technicians[i];
       t2.svcs = t2.svcs || [];

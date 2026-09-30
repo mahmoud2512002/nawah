@@ -454,6 +454,7 @@ async function renderAReq(no, soft) {
   if (soft && box.contains(document.activeElement) && document.activeElement.tagName !== 'BUTTON') return;
 
   await needQR();
+  await loadTechCards();
   const s = svcById(r.svc), c = colorOf(s), p = CFG.priorities[r.prio] || CFG.priorities.normal;
   const assigned = techIdsOf(r);
   if (!AREQ_SEL[r.no]) AREQ_SEL[r.no] = assigned.slice();
@@ -508,9 +509,15 @@ async function renderAReq(no, soft) {
         <p class="fine mb">اختار فني أو أكتر، وبعدين اضغط الزرار.</p>
         <div class="tpicks">${pool.map((t) => {
           const on = sel.indexOf(t.id) > -1;
-          return `<button type="button" class="tpick ${on ? 'on' : ''}" data-pick="${esc(t.id)}" aria-pressed="${on}">
-            <i>${on ? '✓' : ''}</i><b>${esc(t.name || 'بدون اسم')}</b>${t.phone ? `<small class="ltr">${esc(t.phone)}</small>` : ''}</button>`;
+          const no = cardNoFor(t.id, t);
+          return `<button type="button" class="tpick ${on ? 'on' : ''}" data-pick="${esc(t.id)}" aria-pressed="${on}"${no ? '' : ' style="opacity:.6"'}>
+            <i>${on ? '✓' : ''}</i><b>${esc(t.name || 'بدون اسم')}</b><small class="ltr">${no ? 'كارنيه ' + esc(no) : '⚠ مفيش كارنيه'}</small></button>`;
         }).join('')}</div>
+        ${(() => {
+          const none = pool.filter((t) => !cardNoFor(t.id, t));
+          return none.length ? `<div class="note-box warn mt"><b>${none.length > 1 ? 'الفنيين دول مش معاهم كارنيه' : 'الفني ده مش معاه كارنيه'} — مينفعش يتكتبوا في أمر شغل</b>
+            <div class="pp-bar">${none.map((t) => `<button class="btn btn-quiet btn-sm" type="button" data-wo="mkcard" data-id="${esc(t.id)}" data-no="${esc(r.no)}">اطلع كارنيه ${esc(t.name || '')}</button>`).join('')}</div></div>` : '';
+        })()}
         ${!canAssign() ? approveCard(true) : `<button class="btn btn-primary btn-block mt" type="button" data-aw="assign" ${sel.length ? '' : 'disabled'}>
           ${assigned.length ? (changed ? 'حفظ الإسناد الجديد وتحديث أمر الشغل' : 'مُسند — إعادة إصدار أمر الشغل') : 'إسناد وإصدار أمر الشغل'}
           ${sel.length ? ' (' + num(sel.length) + ')' : ''}</button>`}
@@ -553,6 +560,11 @@ async function areqAssign(no, btn) {
   const techs = ids.map(techById).filter(Boolean);
   if (!r || !techs.length) { toast('اختار فني واحد على الأقل'); return; }
 
+  /* مفيش أمر شغل لفني من غير كارنيه — والإسناد نفسه مبيتحفظش */
+  await loadTechCards();
+  const missing = techsWithoutCard(ids);
+  if (missing.length) { toast(noCardMsg(missing)); renderAReq(no); return; }
+
   const stage = Math.max(1, r.stage | 0);
   const was = btn.textContent;
   btn.disabled = true;
@@ -577,7 +589,8 @@ async function areqAssign(no, btn) {
     if (rec.cloud) r.wo_pdf = rec.cloud;
     toast(rec.cloud ? 'تم الإسناد — وأمر الشغل اتحفظ في الأرشيف' : 'تم الإسناد — وأمر الشغل اتحفظ على الجهاز');
   } catch (e) {
-    toast('تم الإسناد — بس تعذّر إصدار PDF، استخدم «طباعة»');
+    const why = String((e && e.message) || '');
+    toast(/^no-card:/.test(why) ? why.slice(8) : 'تم الإسناد — بس تعذّر إصدار PDF، استخدم «طباعة»');
   }
   renderAReq(no);
   refreshInboxUI();
@@ -766,6 +779,7 @@ async function loadServerTechs() {
     const rows = (await DB.adminTechs()) || [];
     TECHS_ON_SERVER = rows.map((t) => ({ id: t.id, name: t.name || '', phone: t.phone || '', pin: t.pin || '', svcs: t.svcs || [] }));
     if (TECHS_ON_SERVER.length) CFG.technicians = TECHS_ON_SERVER.map((t) => Object.assign({}, t));
+    syncTechCards();                 // أرقام الكارنيهات اللي على الجهاز ده ← السيرفر
     return true;
   } catch (e) { return false; }
 }
@@ -1012,6 +1026,8 @@ function initInbox() {
       const no = $('#v-areq').dataset.no;
       const list = AREQ_SEL[no] = AREQ_SEL[no] || [];
       const k = list.indexOf(pk.dataset.pick);
+      const missing = techsWithoutCard([pk.dataset.pick]);
+      if (k < 0 && missing.length) { toast(noCardMsg(missing)); return; }
       if (k > -1) list.splice(k, 1); else list.push(pk.dataset.pick);
       renderAReq(no);
       return;
@@ -1025,7 +1041,12 @@ function initInbox() {
       if (act === 'assign') { areqAssign(no, w); return; }
       if (act === 'gotech') { adminTab = 'tech'; go('admin'); return; }
       if (!r) return;
-      if (act === 'print') { await needQR(); printPaper(woSheet(r), 'امر-شغل-' + r.no); return; }
+      if (act === 'print') {
+        await needQR(); await loadTechCards();
+        const missing = techsWithoutCard(techIdsOf(r));
+        if (missing.length) { toast(noCardMsg(missing)); return; }
+        printPaper(woSheet(r), 'امر-شغل-' + r.no); return;
+      }
       const was = w.textContent;
       w.disabled = true; w.textContent = '…';
       try {
@@ -1035,7 +1056,8 @@ function initInbox() {
         const st = $('#areqPdfState');
         if (st) st.textContent = r.wo_pdf ? '☁ محفوظ في الأرشيف السحابي' : '✓ محفوظ على الجهاز ده';
       } catch (err) {
-        toast('تعذّر إنشاء الملف — استخدم «طباعة» ثم «حفظ كـ PDF».');
+        const why = String((err && err.message) || '');
+        toast(/^no-card:/.test(why) ? why.slice(8) : 'تعذّر إنشاء الملف — استخدم «طباعة» ثم «حفظ كـ PDF».');
       } finally {
         w.disabled = false; w.textContent = was;
       }
