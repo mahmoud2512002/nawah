@@ -319,6 +319,7 @@
           <button class="row-btn" id="btnInstall2" type="button"><span data-t="set.install">تثبيت</span><em id="installState">متاح</em></button>
           <button class="row-btn" data-go="admin" type="button"><span data-t="set.adminRow">لوحة الإدارة</span><em id="adminRow">تحتاج كلمة مرور</em></button>
           <button class="row-btn" data-go="tech" type="button"><span data-t="tech.login">دخول الفني</span><em data-t="tech.pinRow">برقم سري</em></button>
+          <button class="row-btn" data-about type="button"><span data-t="about.title">عن التطبيق</span><em data-t="about.btn">معلومات</em></button>
           <button class="row-btn" id="btnNotif" type="button">
             <span data-t="notif.row">إشعارات تحديث الطلب</span><em id="notifState">—</em>
           </button>
@@ -434,6 +435,10 @@
       </div>
       <p class="foot-name" id="fName"></p>
       <p class="foot-sync" id="fSync"></p>
+      <button class="foot-info" type="button" data-about>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6v.01"/></svg>
+        <span data-t="about.btn">معلومات</span>
+      </button>
     </footer>
   </main>
 
@@ -483,6 +488,24 @@
     <p class="err center" id="passErr" hidden data-t="pass.err">كلمة المرور غير صحيحة</p>
     <button class="btn btn-primary btn-block" id="passGo" type="button" data-t="pass.go">دخول</button>
     <button class="btn btn-quiet btn-block" data-close type="button" data-t="cancel">إلغاء</button>
+  </div>
+</div>
+
+<!-- عن التطبيق -->
+<div class="sheet-wrap" id="aboutSheet" hidden>
+  <div class="sheet-bg" data-close></div>
+  <div class="sheet about" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <span class="grip" aria-hidden="true"></span>
+    <img class="about-logo" src="logo.png" alt="" width="64" height="64">
+    <h3 id="aboutTitle" data-t="about.title">عن التطبيق</h3>
+    <p class="about-app" data-t="about.app">تطبيق الصيانة الذكي للمدينة السكنية بالضبعة</p>
+    <p class="about-co" id="aboutCo"></p>
+    <div class="about-credit">
+      <span data-t="about.credit">تصميم وتنفيذ الموقع</span>
+      <b dir="ltr">Mahmoud Adel Elshahed</b>
+    </div>
+    <p class="fine center" data-t="set.version">الإصدار ١٫٠ · يعمل بدون إنترنت بعد أول فتح.</p>
+    <button class="btn btn-primary btn-block" data-close type="button" data-t="ok">تمام</button>
   </div>
 </div>
 

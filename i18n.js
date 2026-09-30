@@ -314,6 +314,10 @@ const I18N = {
   'set.clearAsk':     { ar:'سيتم مسح كل الطلبات المحفوظة على هذا الجهاز. متابعة؟', en:'All requests saved on this device will be deleted. Continue?', ru:'Все заявки на этом устройстве будут удалены. Продолжить?' },
   'set.cleared':      { ar:'تم مسح الطلبات', en:'Requests cleared', ru:'Заявки удалены' },
   'set.noReq':        { ar:'لا توجد طلبات', en:'No requests', ru:'Заявок нет' },
+  'about.btn':        { ar:'معلومات', en:'About', ru:'О приложении' },
+  'about.title':      { ar:'عن التطبيق', en:'About this app', ru:'О приложении' },
+  'about.app':        { ar:'تطبيق الصيانة الذكي للمدينة السكنية بالضبعة', en:'Smart maintenance app for the El-Dabaa residential city', ru:'Приложение обслуживания жилого городка Эль-Дабаа' },
+  'about.credit':     { ar:'تصميم وتنفيذ الموقع', en:'Website design & development', ru:'Дизайн и разработка сайта' },
   'set.version':      { ar:'الإصدار ١٫٠ · يعمل بدون إنترنت بعد أول فتح.', en:'Version 1.0 · works offline after the first visit.', ru:'Версия 1.0 · работает офлайн после первого открытия.' },
   'saved':            { ar:'تم الحفظ',      en:'Saved',      ru:'Сохранено' },
 

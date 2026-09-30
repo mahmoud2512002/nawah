@@ -1281,3 +1281,24 @@ body.is-tech.is-admin .tabbar{ grid-template-columns:repeat(7,minmax(0,1fr)); }
 .dev-t b{ font-size:14px; color:var(--navy); }
 .dev-t b .st{ font-style:normal; margin-inline-start:6px; vertical-align:middle; }
 .dev-t span{ font-size:11.5px; color:var(--muted); line-height:1.6; }
+
+/* زرار «معلومات» في آخر الصفحة + شاشة «عن التطبيق» */
+.foot-info{
+  display:inline-flex; align-items:center; gap:6px; margin-top:2px;
+  font-family:inherit; font-size:12px; font-weight:500; color:var(--navy);
+  background:var(--surface); border:1px solid var(--line); border-radius:999px;
+  padding:6px 13px; cursor:pointer;
+}
+.foot-info:active{ background:var(--sky-soft); }
+.sheet.about{ text-align:center; align-items:center; }
+.about-logo{ display:block; width:64px; height:64px; margin:4px auto 6px; }
+.sheet.about h3{ margin:0; }
+.about-app{ margin:4px 0 0; font-size:14px; font-weight:600; color:var(--navy); }
+.about-co{ margin:2px 0 0; font-size:12.5px; color:var(--muted); }
+.about-credit{
+  margin:16px 0 10px; padding:14px 12px; border-radius:14px;
+  background:var(--surface-2); border:1px solid var(--line-soft);
+  display:flex; flex-direction:column; gap:4px;
+}
+.about-credit span{ font-size:12px; color:var(--muted); }
+.about-credit b{ font-size:17px; font-weight:700; color:var(--navy); letter-spacing:.2px; }

@@ -1295,6 +1295,11 @@ function initEvents() {
   document.addEventListener('click', (e) => {
     const g = e.target.closest('[data-go]');
     if (g) { go(g.dataset.go); return; }
+    if (e.target.closest('[data-about]')) {
+      $('#aboutCo').textContent = C(CFG.brand, 'company');
+      $('#aboutSheet').hidden = false;
+      return;
+    }
     const c = e.target.closest('[data-close]');
     if (c) { const w = c.closest('.sheet-wrap'); if (w) w.hidden = true; return; }
 
