@@ -714,10 +714,19 @@ function askPassword() {
 }
 
 async function tryPassword() {
-  let ok = false;
-  try { ok = (await sha256($('#passInput').value.trim())) === ADMIN_HASH; }
-  catch (e) { ok = false; }
+  const pass = $('#passInput').value.trim();
+  let ok = false, why = '';
+  if (DB.ready() && DB.secure !== false) {
+    try {
+      const res = await DB.sec('admin_check', { pass }, async () => (await sha256(pass)) === ADMIN_HASH ? 'ok' : 'bad');
+      ok = res === 'ok'; why = res;
+    } catch (e) { why = 'net'; }
+  } else {
+    try { ok = (await sha256(pass)) === ADMIN_HASH; } catch (e) { ok = false; }
+  }
   if (!ok) {
+    $('#passErr').textContent = why === 'locked' ? 'محاولات كتير غلط — الدخول بكلمة المرور متوقف ربع ساعة.'
+                              : why === 'net' ? T('err.net') : T('pass.err');
     $('#passErr').hidden = false;
     $('#passInput').value = '';
     return;
@@ -739,6 +748,7 @@ async function tryPassword() {
 }
 
 let adminTab = 'inbox';
+let TECHS_LOADED = false;
 
 function renderAdmin() {
   $('#pubDot').hidden = !hasDraft();
@@ -749,6 +759,12 @@ function renderAdmin() {
   if (adminTab === 'content')   box.innerHTML = admContent();
   if (adminTab === 'lock')      box.innerHTML = admLock();
   if (adminTab === 'publish')   box.innerHTML = admPublish();
+  if (adminTab === 'tech' && techServer() && !TECHS_LOADED) {
+    TECHS_LOADED = true;
+    box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`;
+    loadServerTechs().then(() => { if (adminTab === 'tech') renderAdmin(); });
+    return;
+  }
   if (adminTab === 'tech')      box.innerHTML = admTech();
   if (adminTab === 'backend')   box.innerHTML = admBackend();
   if (adminTab === 'ann')       box.innerHTML = admAnn();
@@ -937,13 +953,25 @@ function admTech() {
   const idx = (t) => list.indexOf(t);
   const loose = list.filter((t) => !(t.svcs || []).length);
 
-  return `<p class="fine mb">ضيف لكل قسم الفنيين والصنايعية بتوعه — مفيش حد للعدد، اضغط «+ فني» جنب القسم لكل واحد.
+  const server = techServer();
+  const fromFile = (REMOTE && REMOTE.technicians || []).filter((t) => t.name);
+  const importCard = server && !TECHS_ON_SERVER.length && fromFile.length ? `<div class="note-box warn">
+      <b>انقل الفنيين للسيرفر المؤمَّن</b>
+      <p>فيه ${num(fromFile.length)} فنيين في ملف الإعدادات العام بأرقام سرية مكشوفة. انقلهم للسيرفر
+      وهياخدوا أرقام سرية جديدة (٦ أرقام) مش ظاهرة لحد — وبعدها اعمل «نشر» عشان يتشالوا من الملف العام.</p>
+      <button class="btn btn-primary btn-block mt" type="button" data-act="techimport">نقل الفنيين بأرقام سرية جديدة</button>
+    </div>` : '';
+  return `${importCard}<p class="fine mb">ضيف لكل قسم الفنيين والصنايعية بتوعه — مفيش حد للعدد، اضغط «+ فني» جنب القسم لكل واحد.
     لما تفتح طلب من «الطلبات المستلمة» هيظهرلك فنيين القسم بتاعه بس وتختار واحد أو أكتر.
     اللي شغال في أكتر من قسم فعّل أقسامه من الأزرار تحت اسمه.</p>
-  <div class="note-box">
+  ${server ? `<div class="note-box ok">
+    <b>🔒 الفنيين محفوظين في السيرفر المؤمَّن</b>
+    <p>أي تعديل بيتحفظ فوراً من غير «نشر»، والأرقام السرية بتظهر هنا لأجهزة الإدارة المعتمدة بس.
+    الفني بيدخل من ⚙️ الإعدادات ← «دخول الفني».</p>
+  </div>` : `<div class="note-box">
     <b>الإسناد بيشتغل فوراً من جهازك</b>
     <p>لكن عشان الفني الجديد يقدر يدخل «مهامي» من موبايله برقمه السري، لازم «نشر» بعد الإضافة.</p>
-  </div>
+  </div>`}
   ${CFG.services.map((sv) => {
     const mine = list.filter((t) => (t.svcs || []).indexOf(sv.id) > -1);
     const c = colorOf(sv);
@@ -1099,24 +1127,31 @@ function initAdmin() {
     if (act === 'adown')   { const A = CFG.announcements; if (i < A.length - 1) { const x = A[i]; A[i] = A[i+1]; A[i+1] = x; } }
     if (act === 'addtech') {
       const svcFor = b.dataset.svc ? [b.dataset.svc] : [];
-      (CFG.technicians = CFG.technicians || []).push({ id: 't' + Date.now().toString(36), name: '', phone: '',
-        pin: String(Math.floor(1000 + Math.random() * 9000)), svcs: svcFor });
-      saveDraft(); renderAdmin();
+      const nt = { id: 't' + Date.now().toString(36), name: '', phone: '', pin: newPin(), svcs: svcFor };
+      (CFG.technicians = CFG.technicians || []).push(nt);
+      if (techServer()) saveTechSoon(nt); else saveDraft();
+      renderAdmin();
       const fresh = $$('#admBody [data-tk="name"]').filter((x) => !x.value).pop();
       if (fresh) { fresh.focus(); fresh.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
       return;
     }
-    if (act === 'tdel')    { if (!confirm(T('adm.delAsk') + ' \u00ab' + (CFG.technicians[i].name || '') + '\u00bb\u061f')) return; CFG.technicians.splice(i, 1); }
+    if (act === 'tdel')    {
+      if (!confirm(T('adm.delAsk') + ' \u00ab' + (CFG.technicians[i].name || '') + '\u00bb\u061f')) return;
+      const gone = CFG.technicians.splice(i, 1)[0];
+      if (techServer()) { DB.deleteTech(gone.id).catch(() => toast(T('err.net'))); renderAdmin(); return; }
+    }
+    if (act === 'techimport') { importTechs(b); return; }
     if (b.dataset.trade) {
       const t2 = CFG.technicians[i];
       t2.svcs = t2.svcs || [];
       const k = t2.svcs.indexOf(b.dataset.trade);
       if (k > -1) t2.svcs.splice(k, 1); else t2.svcs.push(b.dataset.trade);
-      saveDraft(); renderAdmin(); return;
+      if (techServer()) saveTechSoon(t2); else saveDraft();
+      renderAdmin(); return;
     }
     if (act === 'betest') {
       DB.init(CFG);
-      DB.req('requests?select=no&limit=1')
+      DB.req('rpc/request_count', { method: 'POST', body: '{}' })
         .then(() => { toast(T('adm.beOn')); paintFooter(); renderAdmin(); })
         .catch(() => toast(T('err.net')));
       return;
@@ -1181,7 +1216,7 @@ function initAdmin() {
       return;
     }
     if (t.dataset.k)    CFG.services[i][t.dataset.k] = t.value;
-    else if (t.dataset.tk) CFG.technicians[i][t.dataset.tk] = t.value;
+    else if (t.dataset.tk) { CFG.technicians[i][t.dataset.tk] = t.value; if (techServer()) { saveTechSoon(CFG.technicians[i]); return; } }
     else if (t.dataset.ak) CFG.announcements[i][LANG === 'ar' ? t.dataset.ak : t.dataset.ak + '_' + LANG] = t.value;
     else if (t.dataset.lk) CFG.lines[i][t.dataset.lk] = t.value;
     else if (t.dataset.list) CFG[t.dataset.list] = t.value.split('\n').map((x) => x.trim()).filter(Boolean);
@@ -1203,6 +1238,7 @@ function openEdit(i, toggle) {
 
 function configJSON() {
   const out = clone(CFG);
+  if (DB.secure === true) delete out.technicians;          // الفنيين وأرقامهم السرية في السيرفر مش في الملف العام
   out.version = Number((REMOTE && REMOTE.version) || 0) + 1;
   return JSON.stringify(out, null, 2);
 }
@@ -1423,7 +1459,9 @@ async function finishDelivery(r) {
 function initTech() {
   const saved = sessionStorage.getItem('nawah.tech');
   if (saved) {
-    const t = techById(saved);
+    let t = null;
+    try { const j = JSON.parse(saved); if (j && j.id) t = j.token ? j : techById(j.id); }
+    catch (e) { t = techById(saved); }                              // صيغة قديمة
     if (t) { TECH = t; $('#techTab').hidden = false; document.body.classList.add('is-tech'); }
   }
   $('#techGo').addEventListener('click', techLogin);

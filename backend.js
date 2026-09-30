@@ -42,17 +42,50 @@ const DB = {
 
   // returns the saved row (with its server id)
   async addRequest(r) {
-    const rows = await this.req('requests', {
-      method: 'POST',
-      body: JSON.stringify([toRow(r)]),
-      prefer: 'return=representation'
-    });
-    return rows && rows[0];
+    const row = toRow(r);
+    // return=minimal: الساكن بيسجّل بس — مالوش صلاحية يقرا الجدول
+    await this.req('requests', { method: 'POST', body: JSON.stringify([row]), prefer: 'return=minimal' });
+    return row;
+  },
+
+  /* ══ الوضع الآمن (security.sql) ══════════════════════════
+     كل قراءة أو تعديل بيعدّي على دوال في السيرفر بتتأكد من
+     جهاز الإدارة المعتمد أو الفني. لو الملف لسه ما اتشغّلش،
+     بنرجع للطريقة القديمة عشان مفيش حاجة تقف. */
+  secure: null,
+  async sec(fn, args, legacy) {
+    if (this.secure !== false) {
+      try { const out = await this.rpc(fn, args); this.secure = true; return out; }
+      catch (e) {
+        if (!(legacy && /http-404/.test(String(e.message)))) throw e;
+        this.secure = false;
+      }
+    }
+    return legacy();
+  },
+  cred() {
+    const d = (typeof DEVICE !== 'undefined' && DEVICE) || {};
+    return { dev_id: d.id || null, dev_token: d.token || null };
+  },
+  tcred() {
+    const t = (typeof TECH !== 'undefined' && TECH) || {};
+    return { p_id: t.id || null, p_token: t.token || null };
+  },
+  asTech() { return typeof TECH !== 'undefined' && TECH && TECH.token && !(typeof isAdmin !== 'undefined' && isAdmin); },
+
+  track(no) {
+    return this.sec('track_request', { p_no: no },
+      () => this.req('requests?select=*&no=eq.' + encodeURIComponent(no)));
+  },
+  status(nos) {
+    return this.sec('requests_status', { p_nos: nos },
+      () => this.req('requests?select=no,stage,tech_name,rating&no=in.(' + encodeURIComponent(nos.join(',')) + ')'));
   },
 
   // everything, newest first — for the admin archive
   async allRequests(limit) {
-    return this.req('requests?select=*&order=created_at.desc&limit=' + (limit || 500));
+    return this.sec('admin_requests', Object.assign(this.cred(), { after_id: null, lim: limit || 500 }),
+      () => this.req('requests?select=*&order=created_at.desc&limit=' + (limit || 500)));
   },
 
   // one resident's requests, matched on their phone number
@@ -64,36 +97,45 @@ const DB = {
   async techRequests(techId) {
     const id = String(techId || '');
     const or = '(tech_id.eq.' + id + ',tech_id.like.*|' + id + '|*)';
-    return this.req('requests?select=*&or=' + encodeURIComponent(or)
-                    + '&stage=lt.4&order=created_at.desc');
+    return this.sec('tech_tasks', this.tcred(),
+      () => this.req('requests?select=*&or=' + encodeURIComponent(or) + '&stage=lt.4&order=created_at.desc'));
   },
 
   // الطلبات اللي وصلت بعد آخر طلب شافته الإدارة — بالرقم التسلسلي للسيرفر
   // (مش بالتاريخ، عشان ساعة موبايل الساكن ممكن تكون متأخرة)
   async newAfter(id) {
-    return this.req('requests?select=*&id=gt.' + (Number(id) || 0) + '&order=id.asc&limit=50');
+    return this.sec('admin_requests', Object.assign(this.cred(), { after_id: Number(id) || 0, lim: 50 }),
+      () => this.req('requests?select=*&id=gt.' + (Number(id) || 0) + '&order=id.asc&limit=50'));
   },
 
   async one(no) {
-    const rows = await this.req('requests?select=*&no=eq.' + encodeURIComponent(no));
+    const rows = await this.sec('admin_request', Object.assign(this.cred(), { p_no: no }),
+      () => this.req('requests?select=*&no=eq.' + encodeURIComponent(no)));
     return rows && rows[0];
   },
 
   async between(fromISO, toISO) {
-    return this.req('requests?select=*&created_at=gte.' + fromISO
-                    + '&created_at=lte.' + toISO + '&order=created_at.asc');
+    return this.sec('admin_requests_between', Object.assign(this.cred(), { p_from: fromISO, p_to: toISO }),
+      () => this.req('requests?select=*&created_at=gte.' + fromISO + '&created_at=lte.' + toISO + '&order=created_at.asc'));
   },
 
   async patch(no, fields) {
-    fields.updated_at = new Date().toISOString();
-    return this.req('requests?no=eq.' + encodeURIComponent(no), {
-      method: 'PATCH',
-      body: JSON.stringify(fields),
-      prefer: 'return=representation'
-    });
+    const legacy = () => {
+      const f = Object.assign({}, fields, { updated_at: new Date().toISOString() });
+      return this.req('requests?no=eq.' + encodeURIComponent(no), {
+        method: 'PATCH', body: JSON.stringify(f), prefer: 'return=representation'
+      });
+    };
+    return this.sec('admin_update_request', Object.assign(this.cred(), { p_no: no, p_patch: fields }), legacy);
   },
 
-  setStage(no, stage, extra) { return this.patch(no, Object.assign({ stage }, extra || {})); },
+  setStage(no, stage, extra) {
+    if (this.asTech() && !extra) {
+      return this.sec('tech_set_stage', Object.assign(this.tcred(), { p_no: no, p_stage: stage }),
+        () => this.patch(no, { stage }));
+    }
+    return this.patch(no, Object.assign({ stage }, extra || {}));
+  },
   assign(no, techId, techName) { return this.patch(no, { tech_id: techId, tech_name: techName, stage: 1 }); },
 
   /* إسناد الطلب لفني أو أكثر — الإدارة بتختار من فنيي القسم */
@@ -104,7 +146,29 @@ const DB = {
       stage: stage
     });
   },
-  rate(no, stars, note) { return this.patch(no, { rating: stars, rating_note: note || '' }); },
+  rate(no, stars, note, phone) {
+    return this.sec('rate_request', { p_no: no, p_phone: phone || '', p_stars: stars, p_note: note || '' },
+      () => this.patch(no, { rating: stars, rating_note: note || '' }));
+  },
+
+  /* ── الإدارة: كلمة المرور + الأجهزة + الفنيين + الآراء ── */
+  adminCheck(pass)            { return this.rpc('admin_check', { pass: String(pass || '') }); },
+  requestDevice(pass, id, nm) { return this.rpc('request_device', { pass: String(pass || ''), dev_id: id, dev_name: nm || '' }); },
+  deviceState(id, token)      { return this.rpc('device_state', { dev_id: id, dev_token: token }); },
+  approvePending(target)      { return this.rpc('approve_pending', Object.assign(this.cred(), { target })); },
+  techList()                  { return this.rpc('tech_list', {}); },
+  techLogin(id, pin)          { return this.rpc('tech_login', { p_id: id, p_pin: String(pin || '') }); },
+  adminTechs()                { return this.rpc('admin_techs', this.cred()); },
+  saveTech(t) {
+    return this.rpc('admin_save_tech', Object.assign(this.cred(), {
+      p_id: t.id, p_name: t.name || '', p_phone: t.phone || '', p_pin: String(t.pin || ''), p_svcs: t.svcs || []
+    }));
+  },
+  deleteTech(id)              { return this.rpc('admin_delete_tech', Object.assign(this.cred(), { p_id: id })); },
+  adminComments()             { return this.rpc('admin_comments', this.cred()); },
+  adminComment(id, hidden, reply) {
+    return this.rpc('admin_comment', Object.assign(this.cred(), { p_id: id, p_hidden: hidden, p_reply: reply }));
+  },
 
   /* ── رقم الطلب: عدّاد مركزي لكل قسم ──────────────────
      الدالة في قاعدة البيانات بتزوّد العدّاد وترجّع الرقم في
@@ -127,14 +191,16 @@ const DB = {
 
   async uploadPDF(name, blob) {
     if (!this.ready()) throw new Error('backend-off');
+    // اسم عشوائي محدش يقدر يخمّنه (S12-7f3a…pdf) — الرابط بيتحفظ جنب الطلب بس
+    const rnd = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+    name = String(name).replace(/\.pdf$/i, '') + '-' + rnd + '.pdf';
     const res = await fetch(this.url + '/storage/v1/object/work-orders/' + encodeURIComponent(name), {
       method: 'POST',
       headers: {
         'apikey': this.key,
         'Authorization': 'Bearer ' + this.key,
         'Content-Type': 'application/pdf',
-        'cache-control': 'no-cache',
-        'x-upsert': 'true'
+        'cache-control': 'no-cache'
       },
       body: blob
     });

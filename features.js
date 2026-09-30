@@ -101,8 +101,13 @@ async function countRequests() {
 
 let TECH = null;   // the signed-in technician
 
-function askTech() {
-  const list = CFG.technicians || [];
+async function askTech() {
+  /* الوضع الآمن: أسماء الفنيين من السيرفر (من غير أرقامهم السرية) */
+  let list = null;
+  if (DB.ready() && DB.secure !== false) {
+    try { list = await DB.sec('tech_list', {}, () => null); } catch (e) { list = null; }
+  }
+  if (!list) list = (CFG.technicians || []).filter((t) => t.name);
   if (!list.length) { toast(T('tech.none')); return; }
   $('#techPick').innerHTML = list.map((t) => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');
   $('#techPin').value = '';
@@ -110,15 +115,30 @@ function askTech() {
   $('#techSheet').hidden = false;
 }
 
-function techLogin() {
-  const t = techById($('#techPick').value);
-  if (!t || String($('#techPin').value).trim() !== String(t.pin)) {
+async function techLogin() {
+  const id = $('#techPick').value;
+  const pin = String($('#techPin').value).trim();
+  const fail = (msg) => {
+    $('#techErr').textContent = msg || T('tech.bad');
     $('#techErr').hidden = false;
     $('#techPin').value = '';
-    return;
+  };
+  let t = null;
+  if (DB.ready() && DB.secure !== false) {
+    try {
+      const res = await DB.sec('tech_login', { p_id: id, p_pin: pin }, () => null);
+      if (res && res.status === 'ok') t = { id, name: res.name, token: res.token, svcs: res.svcs || [] };
+      else if (res && res.status === 'locked') return fail('محاولات كتير غلط — استنى ربع ساعة وجرّب تاني.');
+      else if (res) return fail();
+    } catch (e) { return fail(T('err.net')); }
+  }
+  if (!t) {
+    const c = techById(id);
+    if (!c || pin !== String(c.pin)) return fail();
+    t = c;
   }
   TECH = t;
-  sessionStorage.setItem('nawah.tech', t.id);
+  sessionStorage.setItem('nawah.tech', JSON.stringify({ id: t.id, name: t.name, token: t.token || '', svcs: t.svcs || [] }));
   $('#techSheet').hidden = true;
   $('#techTab').hidden = false;
   document.body.classList.add('is-tech');
@@ -213,8 +233,8 @@ function paintStars() {
 async function sendRate() {
   if (!rateStars) { toast(T('rate.pick')); return; }
   const note = $('#rateNote').value.trim();
-  if (DB.ready()) { try { await DB.rate(rateFor, rateStars, note); } catch (e) {} }
   const local = requests.find((x) => x.no === rateFor);
+  if (DB.ready()) { try { await DB.rate(rateFor, rateStars, note, local && local.phone); } catch (e) {} }
   if (local) { local.rating = rateStars; local.rating_note = note; store.set('requests', requests); }
   $('#rateSheet').hidden = true;
   toast(T('rate.thanks'));

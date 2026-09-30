@@ -255,11 +255,12 @@ async function woPDF(r, fresh) {
   if (local && local.blob && TECH == null) return local.blob;
   if (DB.ready()) {
     try {
-      const res = await fetch(DB.pdfURL(r.no + '.pdf') + '?v=' + Date.now(), { cache: 'no-store' });
+      const url = r.wo_pdf || DB.pdfURL(r.no + '.pdf');
+      const res = await fetch(url + (url.indexOf('?') > -1 ? '&' : '?') + 'v=' + Date.now(), { cache: 'no-store' });
       if (res.ok) {
         const blob = await res.blob();
         await PDFDB.put({ no: r.no, wo: r.wo, svc: r.svc, at: r.at, block: r.block, flat: r.flat,
-                          made: new Date().toISOString(), blob, cloud: DB.pdfURL(r.no + '.pdf') });
+                          made: new Date().toISOString(), blob, cloud: url });
         return blob;
       }
     } catch (e) { /* نصدره من جديد */ }
@@ -282,7 +283,11 @@ function woDate(r) {
 }
 
 /* لوجو إضافي اختياري — لو اتحط ملف logo2.png جنب logo.png بيظهر تلقائياً */
-const LOGO2 = '<img class="logo2" src="logo2.png" alt="" onerror="this.remove()">';
+/* شعار تاني اختياري (logo2.png) — بيظهر بس لو الملف موجود */
+let LOGO2 = '';
+fetch('logo2.png', { method: 'HEAD', cache: 'no-store' })
+  .then((r) => { if (r.ok && /image/.test(r.headers.get('content-type') || '')) LOGO2 = '<img class="logo2" src="logo2.png" alt="">'; })
+  .catch(() => {});
 
 /* الورقة كاملة — HTML واحد يتحوّل PDF ويتطبع زي ما هو */
 function woSheet(r) {

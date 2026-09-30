@@ -19,8 +19,13 @@ async function trackRequest(no) {
 
   if (DB.ready()) {
     try {
-      const rows = await DB.req('requests?select=*&no=eq.' + encodeURIComponent(q));
-      if (rows && rows.length) r = fromRow(rows[0]);
+      const rows = await DB.track(q);
+      if (rows && rows.length) {
+        r = fromRow(rows[0]);
+        /* التتبّع العام مبيرجّعش عنوان — لو الطلب من الجهاز ده ناخد العنوان من عندنا */
+        const mine = requests.find((x) => x.no === r.no);
+        if (mine) { r.block = r.block || mine.block; r.flat = r.flat || mine.flat; }
+      }
     } catch (e) {
       box.innerHTML = `<div class="note-box warn"><b>${esc(T('err.net'))}</b></div>`;
       return;
@@ -48,7 +53,7 @@ async function trackRequest(no) {
       <span class="ic" style="background:${c.tint};color:${c.ink}">${svg(iconOf(s))}</span>
       <div class="track-h">
         <b>${esc(C(s, 'name'))}</b>
-        <span>${esc(r.no)} · ${esc(T('lbl.building'))} ${num(esc(r.block))} / ${esc(T('lbl.flat'))} ${num(esc(r.flat))}</span>
+        <span>${esc(r.no)}${r.block ? ` · ${esc(T('lbl.building'))} ${num(esc(r.block))} / ${esc(T('lbl.flat'))} ${num(esc(r.flat))}` : ''}</span>
       </div>
       ${stageChip(r.stage)}
     </div>
@@ -84,7 +89,9 @@ async function loadComments() {
 
   box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`;
   try {
-    commentsCache = await DB.req('comments?select=*&order=created_at.desc&limit=200') || [];
+    commentsCache = (isAdmin && DB.secure !== false && typeof DEVICE_OK !== 'undefined' && DEVICE_OK
+      ? await DB.adminComments().catch(() => null) : null)
+      || await DB.req('comments?select=*&order=created_at.desc&limit=200') || [];
   } catch (e) {
     box.innerHTML = `<div class="note-box warn"><b>${esc(T('cm.needSql'))}</b></div>`;
     return;
@@ -174,7 +181,8 @@ async function cmHide(id) {
   const c = commentsCache.find((x) => String(x.id) === String(id));
   if (!c) return;
   try {
-    await DB.req('comments?id=eq.' + id, { method: 'PATCH', body: JSON.stringify({ hidden: !c.hidden }) });
+    await DB.sec('admin_comment', Object.assign(DB.cred(), { p_id: Number(id), p_hidden: !c.hidden, p_reply: null }),
+      () => DB.req('comments?id=eq.' + id, { method: 'PATCH', body: JSON.stringify({ hidden: !c.hidden }) }));
     loadComments();
   } catch (e) { toast(T('err.net')); }
 }
@@ -185,7 +193,8 @@ async function cmReply(id) {
   const txt = prompt(T('cm.replyAsk'), c.reply || '');
   if (txt === null) return;
   try {
-    await DB.req('comments?id=eq.' + id, { method: 'PATCH', body: JSON.stringify({ reply: txt.trim() || null }) });
+    await DB.sec('admin_comment', Object.assign(DB.cred(), { p_id: Number(id), p_hidden: null, p_reply: txt.trim() }),
+      () => DB.req('comments?id=eq.' + id, { method: 'PATCH', body: JSON.stringify({ reply: txt.trim() || null }) }));
     loadComments();
   } catch (e) { toast(T('err.net')); }
 }

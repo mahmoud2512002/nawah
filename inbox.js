@@ -71,7 +71,10 @@ async function inboxLoad() {
   if (INBOX.busy) return INBOX.busy;
   INBOX.busy = (async () => {
     let rows;
-    if (DB.ready()) {
+    INBOX.locked = false;
+    if (DB.ready() && !canAssign()) {
+      rows = []; INBOX.locked = true;                           // البيانات للأجهزة المعتمدة بس
+    } else if (DB.ready()) {
       try { rows = (await DB.allRequests(400)).map(fromRow); INBOX.err = false; }
       catch (e) { INBOX.err = true; rows = INBOX.rows.length ? INBOX.rows : requests.slice(); }
     } else {
@@ -110,6 +113,7 @@ function startAdminWatch() {
   if (!canAssign()) { inboxLoad(); return; }       // جهاز مش معتمد: القائمة بس، من غير إشعارات
   unlockSound();
   if (DEVICE_OK) enablePush(false);                // جدّد عنوان الإشعارات بهدوء
+  if (DEVICE_OK) { loadServerTechs(); loadPendingDevices().then(refreshInboxUI); }
   ADM_FIRST_POLL = true;
   inboxLoad().then(admPoll);
   if (DB.ready()) DB.live(onLiveChange);
@@ -131,6 +135,11 @@ function admOnVisible() { if (!document.hidden) admPoll(); }
 async function admPoll() {
   if (!isAdmin) return;
   /* كل ٥ دقايق: الجهاز لسه معتمد؟ */
+  if (DEVICE_OK && VERIFY_TICK % 3 === 2) {
+    const had = PENDING_DEVS.length;
+    await loadPendingDevices();
+    if (PENDING_DEVS.length > had) { chime(true); refreshInboxUI(); }
+  }
   if (DEVICE && DB.ready() && ++VERIFY_TICK % 15 === 0) {
     const v = await verifyDevice();
     if (v === 'revoked') { dropAdmin('الجهاز ده اتلغى اعتماده من الإدارة'); return; }
@@ -347,8 +356,10 @@ function paintInbox() {
   const hadSearch = document.activeElement && document.activeElement.id === 'inbSearch';
 
   box.innerHTML = `<div class="inbox">
+    ${pendingCard()}
     ${!canAssign() ? approveCard(false) : notifCard()}
     ${INBOX.err ? `<div class="note-box warn"><b>${esc(T('err.net'))}</b><p>بيتعرض آخر نسخة اتحمّلت.</p></div>` : ''}
+    ${INBOX.locked ? '' : ''}
     ${!DB.ready() ? `<div class="note-box warn"><b>${esc(T('foot.local'))}</b><p>بتظهر هنا طلبات الجهاز ده بس لحد ما قاعدة البيانات تتربط.</p></div>` : ''}
     <div class="arch-stats inb-filters" role="tablist">
       ${[['new', 'جديدة — محتاجة إسناد'], ['work', 'جارية'], ['done', 'تم الإصلاح'], ['all', 'الكل']].map(([k, label]) =>
@@ -585,6 +596,18 @@ let DEVICE_OK = false;                   // معتمد ومتأكدين من ا�
 let DEVICES_ON = null;                   // السيرفر فيه جدول الأجهزة؟ (null = لسه معرفناش)
 let PUSH_STATE = '';                     // ok | denied | default | unsupported | ios | error
 let VERIFY_TICK = 0;
+let DEVICE_PENDING = false;              // الجهاز طلب اعتماد ومستني موافقة جهاز معتمد
+let PENDING_DEVS = [];                   // أجهزة مستنية موافقة (بتظهر للأجهزة المعتمدة)
+let PENDING_TIMER = null;
+let TECHS_ON_SERVER = [];                // الفنيين من السيرفر المؤمَّن
+
+/* الفنيين محفوظين في السيرفر المؤمَّن؟ */
+function techServer() { return DB.secure === true && DEVICE_OK; }
+
+function newPin() {
+  const n = crypto.getRandomValues(new Uint32Array(1))[0] % 900000 + 100000;
+  return String(n);
+}
 
 function store0(k) { try { return JSON.parse(localStorage.getItem('nawah.' + k)); } catch (e) { return null; } }
 const missingFn = (e) => /http-404/.test(String(e && e.message));
@@ -597,11 +620,13 @@ async function verifyDevice() {
   if (!DEVICE || !DEVICE.id || !DEVICE.token) { DEVICE_OK = false; return false; }
   if (!DB.ready()) { DEVICE_OK = true; return true; }
   try {
-    const ok = await DB.deviceOk(DEVICE.id, DEVICE.token);
+    const st = await DB.sec('device_state', { dev_id: DEVICE.id, dev_token: DEVICE.token },
+      async () => ((await DB.deviceOk(DEVICE.id, DEVICE.token)) === true ? 'ok' : 'none'));
     DEVICES_ON = true;
-    if (ok === true) { DEVICE_OK = true; return true; }
+    if (st === 'ok') { DEVICE_OK = true; DEVICE_PENDING = false; return true; }
+    if (st === 'pending') { DEVICE_OK = false; DEVICE_PENDING = true; watchPending(); return 'pending'; }
     store.del('adminDevice');                                  // الإدارة لغت اعتماده
-    DEVICE = null; DEVICE_OK = false;
+    DEVICE = null; DEVICE_OK = false; DEVICE_PENDING = false;
     return 'revoked';
   } catch (e) {
     if (missingFn(e)) DEVICES_ON = false;
@@ -613,8 +638,11 @@ async function verifyDevice() {
 /* السيرفر عنده خاصية الأجهزة؟ (لجهاز لسه مش معتمد) */
 async function probeDevices() {
   if (DEVICES_ON !== null || !DB.ready()) return DEVICES_ON;
-  try { await DB.listDevices(null, null, ADMIN_PIN); DEVICES_ON = true; }
+  try { await DB.deviceOk('probe', 'probe'); DEVICES_ON = true; }
   catch (e) { if (missingFn(e)) DEVICES_ON = false; }
+  if (DEVICES_ON && DB.secure === null) {
+    try { await DB.sec('device_state', { dev_id: 'probe', dev_token: 'probe' }, async () => null); } catch (e) {}
+  }
   return DEVICES_ON;
 }
 
@@ -636,16 +664,23 @@ async function approveDevice(name, btn) {
   const id = (DEVICE && DEVICE.id) || newDeviceId();
   const was = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'جاري الاعتماد…'; }
+  const nm = name || guessDeviceName();
   try {
-    const token = await DB.approveDevice(ADMIN_PIN, id, name || guessDeviceName());
-    DEVICE = { id, token: String(token), name: name || guessDeviceName() };
+    const res = await DB.sec('request_device', { pass: ADMIN_PIN, dev_id: id, dev_name: nm },
+      async () => ({ status: 'approved', token: await DB.approveDevice(ADMIN_PIN, id, nm) }));
+    DEVICES_ON = true;
+    if (!res || res.status === 'bad') { toast('كلمة المرور غلط'); return false; }
+    if (res.status === 'locked') { toast('محاولات كتير غلط — استنى ربع ساعة'); return false; }
+    DEVICE = { id, token: String(res.token), name: nm };
     store.set('adminDevice', DEVICE);
-    DEVICE_OK = true; DEVICES_ON = true;
-    isAdmin = true;
-    sessionStorage.setItem('nawah.admin', '1');
+    if (res.status === 'pending') {
+      DEVICE_OK = false; DEVICE_PENDING = true;
+      toast('اتبعت طلب اعتماد — لازم جهاز إدارة معتمد يوافق عليه');
+      watchPending();
+      return false;
+    }
+    await becomeApproved();
     toast('تم اعتماد الجهاز ده للإدارة');
-    startAdminWatch();
-    await enablePush(true);
     return true;
   } catch (e) {
     if (missingFn(e)) { DEVICES_ON = false; toast('لازم تشغّل ملف أجهزة الإدارة في قاعدة البيانات الأول'); }
@@ -656,6 +691,104 @@ async function approveDevice(name, btn) {
     if (btn) { btn.disabled = false; btn.textContent = was; }
     refreshAdminViews();
   }
+}
+
+async function becomeApproved() {
+  DEVICE_OK = true; DEVICE_PENDING = false; DEVICES_ON = true;
+  clearInterval(PENDING_TIMER); PENDING_TIMER = null;
+  isAdmin = true;
+  sessionStorage.setItem('nawah.admin', '1');
+  $('#adminTab').hidden = false;
+  document.body.classList.add('is-admin');
+  stopAdminWatch();
+  startAdminWatch();
+  await enablePush(true);
+  refreshAdminViews();
+}
+
+/* الجهاز مستني موافقة: نسأل كل ١٥ ثانية */
+function watchPending() {
+  if (PENDING_TIMER) return;
+  PENDING_TIMER = setInterval(async () => {
+    if (!DEVICE || !DEVICE_PENDING) { clearInterval(PENDING_TIMER); PENDING_TIMER = null; return; }
+    try {
+      const st = await DB.deviceState(DEVICE.id, DEVICE.token);
+      if (st === 'ok') { await becomeApproved(); toast('تمت الموافقة على الجهاز ده — أهلاً بيك في الإدارة'); }
+      else if (st === 'none') {
+        clearInterval(PENDING_TIMER); PENDING_TIMER = null;
+        await forgetThisDevice();
+        toast('طلب اعتماد الجهاز ده اترفض');
+        refreshAdminViews();
+      }
+    } catch (e) { /* نحاول تاني */ }
+  }, 15000);
+}
+
+/* الأجهزة اللي مستنية موافقة (للأجهزة المعتمدة) */
+async function loadPendingDevices() {
+  if (!DEVICE_OK || DB.secure !== true) { PENDING_DEVS = []; return; }
+  try {
+    const list = (await DB.listDevices(DEVICE.id, DEVICE.token, null)) || [];
+    PENDING_DEVS = list.filter((d) => d.approved === false);
+  } catch (e) { /* نحاول بعدين */ }
+}
+
+async function acceptDevice(id, btn) {
+  if (btn) btn.disabled = true;
+  try { await DB.approvePending(id); toast('تم اعتماد الجهاز'); }
+  catch (e) { toast(T('err.net')); }
+  await loadPendingDevices();
+  refreshAdminViews();
+}
+
+function pendingCard() {
+  if (!PENDING_DEVS.length) return '';
+  return PENDING_DEVS.map((d) => `<div class="note-box warn dev-pending">
+      <b>🔐 جهاز جديد بيطلب دخول الإدارة: «${esc(d.name || 'جهاز')}»</b>
+      <p>طلب ${esc(ago(d.last_seen || d.created_at))}. لو ده جهازك أو جهاز حد من الإدارة وافق عليه، غير كده ارفضه.</p>
+      <div class="dev-row">
+        <button class="btn btn-primary" type="button" data-dev="accept" data-id="${esc(d.id)}">موافقة</button>
+        <button class="btn btn-quiet" type="button" data-dev="remove" data-id="${esc(d.id)}" data-name="${esc(d.name || '')}">رفض</button>
+      </div>
+    </div>`).join('');
+}
+
+/* ── الفنيين في السيرفر المؤمَّن ── */
+async function loadServerTechs() {
+  if (!techServer()) return false;
+  try {
+    const rows = (await DB.adminTechs()) || [];
+    TECHS_ON_SERVER = rows.map((t) => ({ id: t.id, name: t.name || '', phone: t.phone || '', pin: t.pin || '', svcs: t.svcs || [] }));
+    if (TECHS_ON_SERVER.length) CFG.technicians = TECHS_ON_SERVER.map((t) => Object.assign({}, t));
+    return true;
+  } catch (e) { return false; }
+}
+
+const TECH_SAVE = {};
+function saveTechSoon(t) {
+  clearTimeout(TECH_SAVE[t.id]);
+  TECH_SAVE[t.id] = setTimeout(async () => {
+    try {
+      await DB.saveTech(t);
+      const k = TECHS_ON_SERVER.findIndex((x) => x.id === t.id);
+      if (k > -1) TECHS_ON_SERVER[k] = Object.assign({}, t); else TECHS_ON_SERVER.push(Object.assign({}, t));
+    } catch (e) { toast(/pin/.test(String(e.message)) ? 'الرقم السري لازم ٤ أرقام على الأقل' : T('err.net')); }
+  }, 700);
+}
+
+async function importTechs(btn) {
+  const list = ((REMOTE && REMOTE.technicians) || []).filter((t) => t.name);
+  if (!list.length) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'جاري النقل…'; }
+  let n = 0;
+  for (const t of list) {
+    try { await DB.saveTech({ id: t.id, name: t.name, phone: t.phone || '', pin: newPin(), svcs: t.svcs || [] }); n++; }
+    catch (e) { /* نكمّل */ }
+  }
+  await loadServerTechs();
+  saveDraft();                              // عشان «نشر» يشيلهم من ملف الإعدادات العام
+  toast('اتنقل ' + num(n) + ' فنيين بأرقام سرية جديدة — اعمل «نشر» عشان يتشالوا من الملف العام');
+  renderAdmin();
 }
 
 /* إلغاء اعتماد جهاز (أي جهاز، أو الجهاز ده نفسه) */
@@ -674,7 +807,7 @@ async function forgetThisDevice() {
     if (sub) await sub.unsubscribe();
   } catch (e) {}
   store.del('adminDevice');
-  DEVICE = null; DEVICE_OK = false; PUSH_STATE = '';
+  DEVICE = null; DEVICE_OK = false; DEVICE_PENDING = false; PUSH_STATE = '';
 }
 
 /* ── الإشعار وهو مقفول (Web Push) ── */
@@ -734,6 +867,13 @@ function refreshAdminViews() {
 
 /* كارت «اعتماد الجهاز ده» */
 function approveCard(compact) {
+  if (DEVICE_PENDING) {
+    return `<div class="note-box warn dev-approve">
+      <b>⏳ الجهاز ده مستني موافقة الإدارة</b>
+      <p>اتبعت طلب اعتماد باسم «${esc((DEVICE && DEVICE.name) || '')}». محتاج جهاز إدارة معتمد يوافق عليه
+      من تبويب «أجهزة الإدارة» — وأول ما يوافق هتدخل على طول.</p>
+    </div>`;
+  }
   return `<div class="note-box warn dev-approve">
     <b>الجهاز ده مش معتمد للإدارة لسه</b>
     <p>${compact ? 'اعتمده عشان تقدر تسند الطلبات من عليه.'
@@ -756,8 +896,10 @@ async function admDevices(box) {
   }
   let list = [];
   let err = false;
-  try { list = (await DB.listDevices(DEVICE && DEVICE.id, DEVICE && DEVICE.token, ADMIN_PIN)) || []; }
-  catch (e) { err = true; }
+  if (DEVICE_OK || DB.secure === false) {
+    try { list = (await DB.listDevices(DEVICE && DEVICE.id, DEVICE && DEVICE.token, ADMIN_PIN)) || []; }
+    catch (e) { err = true; }
+  }
   const mine = DEVICE && DEVICE.id;
   box.innerHTML = `
     <p class="fine mb">أي جهاز يدخل بكلمة المرور ويضغط «اعتماد الجهاز ده» بيبقى جهاز إدارة: يوصله الإشعارات
@@ -767,16 +909,19 @@ async function admDevices(box) {
         ${PUSH_STATE !== 'ok' ? '<button class="btn btn-primary btn-block mt" type="button" data-anot="on">🔔 تفعيل الإشعارات على الجهاز ده</button>' : ''}
       </div>` : approveCard(false)}
     ${err ? `<div class="note-box warn"><b>${esc(T('err.net'))}</b></div>` : ''}
-    <h4 class="adm-h">الأجهزة المعتمدة (${num(list.length)})</h4>
+    <h4 class="adm-h">أجهزة الإدارة (${num(list.length)})</h4>
     <div class="adm-list">${list.length ? list.map((d) => `
       <div class="adm-item dev-item">
         <div class="dev-t">
-          <b>${esc(d.name || 'جهاز')}${d.id === mine ? ' <em class="st st-new">الجهاز ده</em>' : ''}</b>
+          <b>${esc(d.name || 'جهاز')}${d.id === mine ? ' <em class="st st-new">الجهاز ده</em>' : ''}${d.approved === false ? ' <em class="st st-hot">مستني موافقة</em>' : ''}</b>
           <span>اتعتمد ${esc(fmtDate(new Date(d.created_at), false))} · آخر ظهور ${esc(d.last_seen ? ago(d.last_seen) : '—')}
             · ${d.has_push ? '🔔 الإشعارات شغالة' : '🔕 الإشعارات مش متفعلة'}</span>
         </div>
-        <button class="btn btn-quiet btn-sm" type="button" data-dev="remove" data-id="${esc(d.id)}" data-name="${esc(d.name || '')}">إلغاء</button>
-      </div>`).join('') : '<p class="fine">مفيش أجهزة معتمدة لسه.</p>'}</div>`;
+        ${d.approved === false
+          ? `<button class="btn btn-primary btn-sm" type="button" data-dev="accept" data-id="${esc(d.id)}">موافقة</button>
+             <button class="btn btn-quiet btn-sm" type="button" data-dev="remove" data-id="${esc(d.id)}" data-name="${esc(d.name || '')}">رفض</button>`
+          : `<button class="btn btn-quiet btn-sm" type="button" data-dev="remove" data-id="${esc(d.id)}" data-name="${esc(d.name || '')}">إلغاء</button>`}
+      </div>`).join('') : `<p class="fine">${DEVICE_OK || DB.secure === false ? 'مفيش أجهزة معتمدة لسه.' : 'القائمة بتظهر على الأجهزة المعتمدة بس.'}</p>`}</div>`;
 }
 
 function pushLine() {
@@ -838,6 +983,7 @@ function initInbox() {
         await approveDevice(nm, dv);
         return;
       }
+      if (dv.dataset.dev === 'accept') { await acceptDevice(dv.dataset.id, dv); return; }
       if (dv.dataset.dev === 'remove') {
         const self = DEVICE && dv.dataset.id === DEVICE.id;
         if (!confirm(self ? 'إلغاء اعتماد الجهاز ده؟ هيخرج من الإدارة ويبطّل يوصله إشعارات.'

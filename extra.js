@@ -128,8 +128,7 @@ function startPolling() {
     if (!open.length && !TECH) return;
     try {
       if (TECH) { if (!$('#v-tech').hidden) renderTech(); return; }
-      const list = open.map((r) => '"' + r.no + '"').join(',');
-      const rows = await DB.req('requests?select=no,stage,tech_name&no=in.(' + encodeURIComponent(list) + ')');
+      const rows = await DB.status(open.map((r) => r.no));
       (rows || []).forEach((row) => onLiveChange({ record: row }));
     } catch (e) { /* offline — try again next tick */ }
   }, 45000);
