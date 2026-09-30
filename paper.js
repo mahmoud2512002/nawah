@@ -227,8 +227,6 @@ function woSig(r) {
 async function archiveWO(r) {
   await needQR();
   await loadTechCards();
-  const missing = techsWithoutCard(techIdsOf(r));
-  if (missing.length) throw new Error('no-card:' + noCardMsg(missing));
   const blob = await htmlToPDF(woSheet(r));
   const rec = {
     no: r.no, wo: r.wo, svc: r.svc, at: r.at,
@@ -507,7 +505,7 @@ function localCardOf(t) {
 let SERVER_CARDS = null;
 let CARDS_AT = 0;
 function serverCards() {
-  if (!SERVER_CARDS) SERVER_CARDS = store.get('techCardNos2', {}) || {};
+  if (!SERVER_CARDS) SERVER_CARDS = store.get('techCardNos', {}) || {};
   return SERVER_CARDS;
 }
 
@@ -528,7 +526,7 @@ async function loadTechCards(force) {
     (rows || []).forEach((x) => { if (x && x.tech_id && x.card_no) m[x.tech_id] = x.card_no; });
     SERVER_CARDS = m;
     CARDS_AT = Date.now();
-    store.set('techCardNos2', m);
+    store.set('techCardNos', m);
   } catch (e) { /* الملف لسه ما اتشغّلش أو النت فاصل — نكمّل باللي عندنا */ }
   return serverCards();
 }
@@ -549,17 +547,23 @@ async function syncTechCards(drop) {
   const cards = Object.keys(map).map((id) => ({ tech: id, no: map[id] }));
   const gone = (drop || []).filter((id) => !map[id]);
   if (cards.length || gone.length) {
-    try { await DB.rpc('save_tech_cards', Object.assign(DB.cred(), { cards, gone })); }
-    catch (e) { /* يتعاد مع أول تحميل للفنيين */ }
+    try {
+      await DB.rpc('save_tech_cards', Object.assign(DB.cred(), { cards, gone }));
+      const m = Object.assign({}, serverCards());
+      gone.forEach((id) => { delete m[id]; });
+      cards.forEach((x) => { m[x.tech] = x.no; });
+      SERVER_CARDS = m;
+      store.set('techCardNos', m);
+    } catch (e) { /* يتعاد مع أول تحميل للفنيين */ }
   }
-  await loadTechCards(true);
-  paintTechCards();
+  await ensureTechCards();
   setTimeout(refreshIssuedWOs, 3000);
 }
 
-/* ── رقم الكارنيه = رقم كارنيه متعمل فعلاً ──
-   الفني مبياخدش رقم إلا لما الإدارة تطلعله كارنيه من «الكارنيهات»، والرقم
-   بيتاخد من الكارنيه نفسه. فني من غير كارنيه مينفعش يتكتب في أمر شغل. */
+/* ── رقم كارنيه تلقائي لكل فني ──
+   أول ما الإدارة تضيف فني، السيرفر بيديله رقم: حرف القسم + السنة + مسلسل
+   (E-26-001)، والرقم ده بيتكتب لوحده في أي أمر شغل يتسند له.
+   الرقم ثابت للفني حتى لو اتنقل قسم، والمسلسل عمره ما بيتكرر. */
 const cardPrefix = (code) => code + '-' + String(new Date().getFullYear()).slice(-2);
 
 function maxSerial(prefix) {
@@ -571,46 +575,31 @@ function maxSerial(prefix) {
   return hi;
 }
 
-/* الفنيين المكلّفين بالطلب اللي مش معاهم كارنيه */
-function techsWithoutCard(ids) {
-  return (ids || []).map((id) => techById(id) || { id, name: '' })
-    .filter((t) => !cardNoFor(t.id, techById(t.id)));
-}
-function noCardMsg(list) {
-  const names = list.map((t) => '«' + (t.name || 'فني بدون اسم') + '»').join('، ');
-  return 'مينفعش يطلع أمر الشغل — ' + names + (list.length > 1 ? ' مش معاهم كارنيه' : ' مش معاه كارنيه')
-    + '. اطلع الكارنيه الأول من «الكارنيهات».';
-}
-
-/* يفتح «الكارنيهات» على كارنيه الفني — أو كارنيه جديد باسمه وقسمه */
-function openCardFor(id) {
-  const t = techById(id);
-  if (!t) return;
-  const c = localCardOf(t);
-  if (c) cardDraft = Object.assign(blankCard(), c);
-  else if (serverCards()[id]) { toast('الفني ده كارنيهه متعمل على جهاز إدارة تاني — رقمه ' + serverCards()[id]); return; }
-  else {
-    const svc = (t.svcs || [])[0] || blankCard().svc;
-    cardDraft = Object.assign(blankCard(), { name: t.name || '', tech: id, svc });
-    cardDraft.no = nextCardNo(svc);
+async function ensureTechCards(ids) {
+  if (typeof DEVICE_OK === 'undefined' || !DEVICE_OK || !DEVICE || !DB.ready()) return;
+  const want = (ids || (CFG.technicians || []).map((t) => t.id)).filter(Boolean);
+  let changed = false;
+  for (const id of want) {
+    const t = techById(id);
+    if (cardNoFor(id, t)) continue;
+    const code = deptCode(((t && t.svcs) || [])[0] || 'other');
+    try {
+      const out = await DB.rpc('assign_tech_card', Object.assign(DB.cred(),
+        { p_tech: id, p_code: code, p_min: maxSerial(cardPrefix(code)) }));
+      const no = typeof out === 'string' ? out : (out && out.assign_tech_card) || '';
+      if (no) { serverCards()[id] = no; changed = true; }
+    } catch (e) { break; }                     // الملف لسه ما اتشغّلش أو النت فاصل
   }
-  go('cards');
-  window.scrollTo(0, 0);
+  if (changed) { store.set('techCardNos', serverCards()); paintTechCards(); }
 }
 
 /* رقم الكارنيه جنب كل فني في تبويب «الفنيين» — من غير ما نعيد رسم الصفحة */
-const CARD_OK   = 'background:var(--sky-soft);color:var(--navy)';
-const CARD_NONE = 'background:var(--warn-bg);color:var(--warn)';
 function techCardLabel(id) {
   const no = cardNoFor(id, techById(id));
-  return no ? 'كارنيه ' + no : '⚠ مفيش كارنيه — اطلعه';
+  return no ? 'كارنيه ' + no : 'كارنيه …';
 }
-function techCardStyle(id) { return cardNoFor(id, techById(id)) ? CARD_OK : CARD_NONE; }
 function paintTechCards() {
-  $$('[data-tcard]').forEach((el) => {
-    el.textContent = techCardLabel(el.dataset.tcard);
-    el.style.cssText = el.dataset.base + ';' + techCardStyle(el.dataset.tcard);
-  });
+  $$('[data-tcard]').forEach((el) => { el.textContent = techCardLabel(el.dataset.tcard); });
 }
 
 /* الطلبات المفتوحة اللي أمر شغلها اتغيّر محتواه بعد الإصدار (رقم كارنيه
@@ -629,7 +618,6 @@ async function refreshIssuedWOs(retry) {
       if (n >= 20) break;
       const rec = await PDFDB.get(r.no);
       if (!rec || rec.issued || rec.sig === woSig(r)) continue;   // مش صادر من الجهاز ده، أو متحدّث
-      if (techsWithoutCard(techIdsOf(r)).length) continue;
       try {
         const done = await archiveWO(r);
         if (done.cloud && typeof inboxTouch === 'function') inboxTouch(r.no, { wo_pdf: done.cloud });
@@ -693,16 +681,6 @@ async function renderWO(no) {
 
   await needQR();
   await loadTechCards();
-  const missing = techsWithoutCard(techIdsOf(r));
-  if (missing.length) {
-    box.innerHTML = hero('أمر الشغل مش هيطلع') + `
-    <div class="note-box warn">
-      <b>${esc(noCardMsg(missing))}</b>
-      <p>اطلع كارنيه لكل فني مكلّف، أو غيّر الإسناد لفني معاه كارنيه — وبعدها افتح أمر الشغل تاني.</p>
-    </div>
-    <div class="pp-bar">${missing.map((t) => `<button class="btn btn-primary" type="button" data-wo="mkcard" data-id="${esc(t.id)}" data-no="${esc(r.no)}">اطلع كارنيه ${esc(t.name || '')}</button>`).join('')}</div>`;
-    return;
-  }
   let rec = await PDFDB.get(r.no);
   if (rec && rec.issued) rec = null;                       // نسخة جت من السحابة مش إصدار الجهاز ده
   const stale = !!(rec && techIdsOf(r).length && rec.sig !== woSig(r));
@@ -1216,7 +1194,6 @@ function initCards() {
       if (at > -1) list[at] = cardDraft; else list.push(cardDraft);
       if (!saveCards(list)) return;
       syncTechCards(before);
-      paintTechCards();
       cardDraft = blankCard();
       renderCards();
       toast('تم حفظ الكارنيه.');
@@ -1267,7 +1244,6 @@ function initCards() {
       return;
     }
 
-    if (act === 'mkcard') { openCardFor(b.dataset.id); return; }
     const r = woFind(b.dataset.no);
     if (!r) return;
 
@@ -1279,12 +1255,7 @@ function initCards() {
       window.open(r.wo_pdf, '_blank', 'noopener');
       return;
     }
-    if (act === 'print' && !techView) {
-      await needQR(); await loadTechCards();
-      const missing = techsWithoutCard(techIdsOf(r));
-      if (missing.length) { toast(noCardMsg(missing)); return; }
-      printPaper(woSheet(r), 'امر-شغل-' + r.no); return;
-    }
+    if (act === 'print' && !techView) { await needQR(); await loadTechCards(); printPaper(woSheet(r), 'امر-شغل-' + r.no); return; }
 
     const was = b.textContent;
     b.disabled = true;
@@ -1299,8 +1270,7 @@ function initCards() {
       }
     } catch (err) {
       const why = err && err.message;
-      toast(/^no-card:/.test(why || '') ? why.slice(8)
-          : why === 'not-issued' ? 'أمر الشغل لسه ما اتصدرش من الإدارة'
+      toast(why === 'not-issued' ? 'أمر الشغل لسه ما اتصدرش من الإدارة'
           : why === 'offline'    ? 'مفيش إنترنت — افتح أمر الشغل تاني أول ما النت يرجع'
           : 'تعذّر إنشاء الملف — استخدم «طباعة» ثم «حفظ كـ PDF».');
     } finally {
