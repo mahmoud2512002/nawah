@@ -395,14 +395,60 @@ function pickSvc(id) {
   $('#errSvc').hidden = true;
 }
 
+/* عدّادات الرئيسية = نفس أرقام «الطلبات المستلمة» في لوحة الإدارة
+   لكل طلبات المدينة (أعداد بس — من غير أي بيانات شخصية):
+     طلب مفتوح     = جديدة محتاجة إسناد
+     جاري التنفيذ  = جارية
+     تم الإصلاح    = تم الإصلاح
+   الأرقام جاية من السيرفر (دالة request_stage_counts). من غير اتصال
+   بيظهر آخر رقم اتجاب، ولو مفيش خالص بتظهر طلبات الجهاز ده. */
+const NAWAH_HOMECNT = { at: 0, busy: false };
+
+function paintHomeCnt(c) {
+  $('#cOpen').textContent = num(c.open | 0);
+  $('#cWork').textContent = num(c.work | 0);
+  $('#cDone').textContent = num(c.done | 0);
+}
+
+function localHomeCnt() {
+  const isNew = (r) => {
+    let techs = [];
+    try { techs = typeof techIdsOf === 'function' ? techIdsOf(r) : (r.tech_id ? [r.tech_id] : []); } catch (e) {}
+    return (r.stage | 0) === 0 && !techs.length;
+  };
+  return {
+    open: requests.filter(isNew).length,
+    work: requests.filter((r) => !isNew(r) && (r.stage | 0) < 3).length,
+    done: requests.filter((r) => (r.stage | 0) >= 3).length
+  };
+}
+
+function homeCntDbOn() { try { return typeof DB !== 'undefined' && DB.ready(); } catch (e) { return false; } }
+
+async function fetchHomeCnt() {
+  if (NAWAH_HOMECNT.busy || !homeCntDbOn()) return;
+  NAWAH_HOMECNT.busy = true;
+  try {
+    let v = await DB.req('rpc/request_stage_counts', { method: 'POST', body: '{}' });
+    if (v && typeof v.json === 'function') v = await v.json();
+    if (typeof v === 'string') v = JSON.parse(v);
+    if (Array.isArray(v)) v = v[0];
+    if (v && v.request_stage_counts) v = v.request_stage_counts;
+    if (v && typeof v === 'object' && 'done' in v) {
+      const c = { open: v.open | 0, work: v.work | 0, done: v.done | 0 };
+      NAWAH_HOMECNT.at = Date.now();
+      store.set('homeCounts', c);
+      paintHomeCnt(c);
+    }
+  } catch (e) {}
+  finally { NAWAH_HOMECNT.busy = false; }
+}
+
 function renderCounters() {
-  const open = requests.filter((r) => r.stage < 2).length;
-  const work = requests.filter((r) => r.stage === 2).length;
-  const done = requests.filter((r) => r.stage >= 3).length;
-  $('#cOpen').textContent = num(open);
-  $('#cWork').textContent = num(work);
-  $('#cDone').textContent = num(done);
+  const cached = store.get('homeCounts', null);
+  paintHomeCnt(cached || localHomeCnt());
   $('#tabDot').hidden = requests.length === 0;
+  if (Date.now() - NAWAH_HOMECNT.at > 8000) fetchHomeCnt();
 }
 
 function renderSelects() {
@@ -1511,6 +1557,14 @@ async function bootExtras() {
   paintFooter();
   renderAnn();
   startPolling();
+
+  /* عدّادات الرئيسية: أول ما الاتصال يجهز، وبعدها كل ٣٠ ثانية طول ما الرئيسية قدامك */
+  fetchHomeCnt();
+  setInterval(() => {
+    const h = $('#v-home');
+    if (document.hidden || (h && h.hidden)) return;
+    fetchHomeCnt();
+  }, 30000);
 
   /* التحديث اللحظي للإدارة والفني بس — الساكن بيتابع طلباته بالـ polling
      (ده بيوفّر اتصالات السيرفر: الخطة المجانية ٢٠٠ اتصال لحظي في نفس الوقت) */
