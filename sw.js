@@ -9,7 +9,7 @@
      • من غير نت                  →  آخر نسخة متخزنة تشتغل عادي
    ══════════════════════════════════════════════════════════════ */
 
-const VERSION = 'nawah-v7';
+const VERSION = 'nawah-v8';
 
 /* يتخزنوا من أول زيارة عشان الشغل بدون إنترنت */
 const SHELL = [
@@ -114,5 +114,31 @@ self.addEventListener('notificationclick', (e) => {
       }
     }
     if (self.clients.openWindow) await self.clients.openWindow(url);
+  })());
+});
+
+/* إشعار «طلب جديد» جاي من السيرفر — بيوصل حتى لو الموقع مقفول */
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { title: e.data ? e.data.text() : '' }; }
+  const no = d.no || '';
+  e.waitUntil((async () => {
+    /* لو لوحة الإدارة مفتوحة قدامك دلوقتي، هي بتنبّه بصوتها — الإشعار هنا من غير صوت تاني */
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const visible = wins.some((c) => c.visibilityState === 'visible');
+    const opts = {
+      body: d.body || '',
+      tag: no ? 'req-' + no : 'nawah-push',
+      data: { no, url: d.url || './#admin' },
+      icon: 'icons/icon-192.png',
+      badge: 'icons/icon-192.png',
+      dir: 'rtl', lang: 'ar',
+      requireInteraction: !!d.urgent
+    };
+    if (visible) opts.silent = true;                 // الإشعار الصامت ممنوع يبقى معاه اهتزاز
+    else opts.vibrate = d.urgent ? [300, 120, 300, 120, 500, 120, 300] : [220, 100, 220, 100, 220];
+    try { await self.registration.showNotification(d.title || 'طلب صيانة جديد', opts); }
+    catch (err) { await self.registration.showNotification(d.title || 'طلب صيانة جديد', { body: opts.body, tag: opts.tag, data: opts.data }); }
+    wins.forEach((c) => c.postMessage({ type: 'push-new', no }));
   })());
 });

@@ -160,6 +160,19 @@ const DB = {
     } catch (e) { return null; }          // null = معرفناش، استخدم الملف
   },
 
+  /* ── أجهزة الإدارة المعتمدة (admin-devices.sql) ── */
+  rpc(fn, args) {
+    return this.req('rpc/' + fn, { method: 'POST', body: JSON.stringify(args || {}) });
+  },
+  approveDevice(pass, id, name)  { return this.rpc('approve_device', { pass: String(pass || ''), dev_id: id, dev_name: name || '' }); },
+  deviceOk(id, token)            { return this.rpc('device_ok', { dev_id: id, dev_token: token }); },
+  listDevices(id, token, pass)   { return this.rpc('list_devices', { dev_id: id || null, dev_token: token || null, pass: pass || null }); },
+  removeDevice(id, token, pass, target) {
+    return this.rpc('remove_device', { dev_id: id || null, dev_token: token || null, pass: pass || null, target });
+  },
+  savePush(id, token, sub)       { return this.rpc('save_push', { dev_id: id, dev_token: token, sub }); },
+  setLockDevice(id, token, flag) { return this.rpc('set_lock_device', { dev_id: id, dev_token: token, flag: !!flag }); },
+
   async setLock(flag, pass) {
     return this.req('rpc/set_lock', {
       method: 'POST',

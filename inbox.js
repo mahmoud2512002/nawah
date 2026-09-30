@@ -107,7 +107,9 @@ function inboxTouch(no, fields) {
 /* ══════════ المراقبة: لحظي + فحص كل ٢٠ ثانية ══════════ */
 function startAdminWatch() {
   if (ADM_TIMER) return;
+  if (!canAssign()) { inboxLoad(); return; }       // جهاز مش معتمد: القائمة بس، من غير إشعارات
   unlockSound();
+  if (DEVICE_OK) enablePush(false);                // جدّد عنوان الإشعارات بهدوء
   ADM_FIRST_POLL = true;
   inboxLoad().then(admPoll);
   if (DB.ready()) DB.live(onLiveChange);
@@ -128,6 +130,11 @@ function admOnVisible() { if (!document.hidden) admPoll(); }
 
 async function admPoll() {
   if (!isAdmin) return;
+  /* كل ٥ دقايق: الجهاز لسه معتمد؟ */
+  if (DEVICE && DB.ready() && ++VERIFY_TICK % 15 === 0) {
+    const v = await verifyDevice();
+    if (v === 'revoked') { dropAdmin('الجهاز ده اتلغى اعتماده من الإدارة'); return; }
+  }
   if (!DB.ready()) {                                   // وضع محلي: طلبات الجهاز نفسه
     requests.forEach((r) => { if (!inboxRow(r.no)) inboxArrived(Object.assign({}, r), true); });
     return;
@@ -191,7 +198,7 @@ function alertNewRequest(r) {
   if (navigator.vibrate) { try { navigator.vibrate(urgent ? [220, 90, 220, 90, 320] : [180, 80, 180]); } catch (e) {} }
   if (store.get('admNotify', true)) {
     sysNotify(title, body, {
-      tag: 'req-' + r.no, renotify: true, requireInteraction: urgent,
+      tag: 'req-' + r.no, requireInteraction: urgent,
       data: { no: r.no, url: './?req=' + encodeURIComponent(r.no) }
     });
   }
@@ -242,18 +249,32 @@ function chime(urgent) {
   try {
     AC = AC || new (window.AudioContext || window.webkitAudioContext)();
     if (AC.state === 'suspended') AC.resume();
-    const notes = urgent ? [988, 740, 988, 740, 988] : [740, 988];
-    notes.forEach((f, i) => {
-      const o = AC.createOscillator(), g = AC.createGain();
-      const t0 = AC.currentTime + i * 0.19;
-      o.type = 'sine';
-      o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.17);
-      o.connect(g); g.connect(AC.destination);
-      o.start(t0); o.stop(t0 + 0.18);
-    });
+    /* صوت أعلى وأوضح: نغمة بثلاث درجات بتتكرر، ومضخّم يرفع الصوت من غير تشويش */
+    const out = AC.createDynamicsCompressor();
+    out.threshold.value = -18; out.knee.value = 8; out.ratio.value = 6;
+    const master = AC.createGain();
+    master.gain.value = 2.2;
+    out.connect(master); master.connect(AC.destination);
+    const tune = urgent ? [1047, 784, 1047, 784, 1319] : [784, 988, 1319];
+    const rounds = urgent ? 3 : 2;
+    let t = AC.currentTime + 0.02;
+    for (let k = 0; k < rounds; k++) {
+      tune.forEach((f) => {
+        [1, 2].forEach((h) => {                       // النغمة + درجة أعلى منها عشان تبان
+          const o = AC.createOscillator(), g = AC.createGain();
+          o.type = h === 1 ? 'triangle' : 'sine';
+          o.frequency.value = f * h;
+          const peak = h === 1 ? 0.9 : 0.25;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(peak, t + 0.015);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+          o.connect(g); g.connect(out);
+          o.start(t); o.stop(t + 0.28);
+        });
+        t += 0.2;
+      });
+      t += 0.25;
+    }
   } catch (e) {}
 }
 
@@ -276,6 +297,8 @@ function paintAdminBadge() {
 
 /* ══════════ تبويب «الطلبات المستلمة» ══════════ */
 async function admInbox(box) {
+  if (DEVICES_ON === null && !DEVICE_OK) await probeDevices();
+  if (canAssign()) startAdminWatch();
   const stale = Date.now() - INBOX.loadedAt > 15000;
   if (INBOX.loadedAt) paintInbox();
   if (stale || !INBOX.loadedAt) { await inboxLoad(); paintInbox(); }
@@ -289,9 +312,13 @@ function notifCard() {
   if (!has) {
     main = `<b>التنبيه على الجهاز ده بالصوت بس</b>
       <p>المتصفح ده مش بيدعم الإشعارات. افتح اللوحة من كروم أو ثبّت التطبيق على الشاشة الرئيسية.</p>`;
+  } else if (perm === 'granted' && store.get('admNotify', true) && PUSH_STATE === 'ok') {
+    main = `<b>🔔 الإشعارات شغالة على الجهاز ده — حتى لو الموقع مقفول</b>
+      <p>أي طلب جديد يوصلك إشعار على الشاشة، ولو اللوحة مفتوحة كمان صوت تنبيه.</p>`;
   } else if (perm === 'granted' && store.get('admNotify', true)) {
-    main = `<b>🔔 إشعارات الطلبات الجديدة شغالة على الجهاز ده</b>
-      <p>أي طلب جديد يوصلك إشعار وصوت طول ما لوحة الإدارة مفتوحة، حتى لو التطبيق في الخلفية.</p>`;
+    main = `<b>🔔 الإشعارات شغالة طول ما لوحة الإدارة مفتوحة</b>
+      <p>${DEVICE_OK ? esc(pushLine()) : 'عشان توصلك وهي مقفولة كمان، اعتمد الجهاز من تبويب «أجهزة الإدارة».'}</p>
+      ${DEVICE_OK && PUSH_STATE !== 'ios' && PUSH_STATE !== 'unsupported' ? '<button class="btn btn-primary btn-block mt" type="button" data-anot="on">تفعيل الإشعارات وهو مقفول</button>' : ''}`;
   } else if (perm === 'denied') {
     main = `<b>الإشعارات مقفولة من المتصفح</b>
       <p>افتحها من إعدادات الموقع في المتصفح (رمز القفل جنب اللينك) ← الإشعارات ← سماح.</p>`;
@@ -320,7 +347,7 @@ function paintInbox() {
   const hadSearch = document.activeElement && document.activeElement.id === 'inbSearch';
 
   box.innerHTML = `<div class="inbox">
-    ${notifCard()}
+    ${!canAssign() ? approveCard(false) : notifCard()}
     ${INBOX.err ? `<div class="note-box warn"><b>${esc(T('err.net'))}</b><p>بيتعرض آخر نسخة اتحمّلت.</p></div>` : ''}
     ${!DB.ready() ? `<div class="note-box warn"><b>${esc(T('foot.local'))}</b><p>بتظهر هنا طلبات الجهاز ده بس لحد ما قاعدة البيانات تتربط.</p></div>` : ''}
     <div class="arch-stats inb-filters" role="tablist">
@@ -473,9 +500,9 @@ async function renderAReq(no, soft) {
           return `<button type="button" class="tpick ${on ? 'on' : ''}" data-pick="${esc(t.id)}" aria-pressed="${on}">
             <i>${on ? '✓' : ''}</i><b>${esc(t.name || 'بدون اسم')}</b>${t.phone ? `<small class="ltr">${esc(t.phone)}</small>` : ''}</button>`;
         }).join('')}</div>
-        <button class="btn btn-primary btn-block mt" type="button" data-aw="assign" ${sel.length ? '' : 'disabled'}>
+        ${!canAssign() ? approveCard(true) : `<button class="btn btn-primary btn-block mt" type="button" data-aw="assign" ${sel.length ? '' : 'disabled'}>
           ${assigned.length ? (changed ? 'حفظ الإسناد الجديد وتحديث أمر الشغل' : 'مُسند — إعادة إصدار أمر الشغل') : 'إسناد وإصدار أمر الشغل'}
-          ${sel.length ? ' (' + num(sel.length) + ')' : ''}</button>
+          ${sel.length ? ' (' + num(sel.length) + ')' : ''}</button>`}
         ${assigned.length ? `<p class="fine center mt">مُسند حالياً إلى: <b>${esc(r.tech_name || assignedTechs.map((t) => t.name).join('، '))}</b></p>` : ''}`
       : `<div class="note-box warn"><b>مفيش فنيين مضافين لقسم ${esc(C(s, 'name'))}</b>
           <p>ضيف فنيين القسم من تبويب «الفنيين» وارجع هنا.</p></div>
@@ -509,6 +536,7 @@ async function renderAReq(no, soft) {
 
 /* ── الإسناد ── */
 async function areqAssign(no, btn) {
+  if (!canAssign()) { toast('اعتمد الجهاز ده للإدارة الأول'); return; }
   const r = inboxRow(no) || WO_POOL[no];
   const ids = (AREQ_SEL[no] || []).slice();
   const techs = ids.map(techById).filter(Boolean);
@@ -544,6 +572,223 @@ async function areqAssign(no, btn) {
   refreshInboxUI();
 }
 
+/* ══════════ أجهزة الإدارة المعتمدة ══════════
+   أي جهاز يدخل بكلمة المرور ويضغط «اعتماد الجهاز ده» بيبقى جهاز إدارة:
+   بيفضل داخل على طول، ويوصله إشعار بكل طلب جديد حتى لو الموقع مقفول،
+   ويقدر يسند الطلبات. الأجهزة متسجلة في قاعدة البيانات (admin-devices.sql)
+   وتقدر تلغي أي جهاز من تبويب «أجهزة الإدارة». */
+
+const VAPID_PUBLIC = 'BHIqB3pVag2MUkyICBali4IcdywB7h8FgtPgn160myWg2ZmCCFFVtOfHdJvvQgVLLJRX2I6Eap0d1lWNo2X5xPA';
+
+let DEVICE = store0('adminDevice');      // { id, token, name }
+let DEVICE_OK = false;                   // معتمد ومتأكدين من السيرفر
+let DEVICES_ON = null;                   // السيرفر فيه جدول الأجهزة؟ (null = لسه معرفناش)
+let PUSH_STATE = '';                     // ok | denied | default | unsupported | ios | error
+let VERIFY_TICK = 0;
+
+function store0(k) { try { return JSON.parse(localStorage.getItem('nawah.' + k)); } catch (e) { return null; } }
+const missingFn = (e) => /http-404/.test(String(e && e.message));
+
+/* الجهاز ده يقدر يسند ويستقبل الإشعارات؟ */
+function canAssign() { return DEVICE_OK || DEVICES_ON === false || !DB.ready(); }
+
+async function verifyDevice() {
+  DEVICE = store.get('adminDevice', null);
+  if (!DEVICE || !DEVICE.id || !DEVICE.token) { DEVICE_OK = false; return false; }
+  if (!DB.ready()) { DEVICE_OK = true; return true; }
+  try {
+    const ok = await DB.deviceOk(DEVICE.id, DEVICE.token);
+    DEVICES_ON = true;
+    if (ok === true) { DEVICE_OK = true; return true; }
+    store.del('adminDevice');                                  // الإدارة لغت اعتماده
+    DEVICE = null; DEVICE_OK = false;
+    return 'revoked';
+  } catch (e) {
+    if (missingFn(e)) DEVICES_ON = false;
+    DEVICE_OK = true;                                          // النت فاصل — نثق في الجهاز
+    return true;
+  }
+}
+
+/* السيرفر عنده خاصية الأجهزة؟ (لجهاز لسه مش معتمد) */
+async function probeDevices() {
+  if (DEVICES_ON !== null || !DB.ready()) return DEVICES_ON;
+  try { await DB.listDevices(null, null, ADMIN_PIN); DEVICES_ON = true; }
+  catch (e) { if (missingFn(e)) DEVICES_ON = false; }
+  return DEVICES_ON;
+}
+
+function newDeviceId() {
+  try { if (crypto.randomUUID) return 'dev-' + crypto.randomUUID(); } catch (e) {}
+  return 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+}
+
+function guessDeviceName() {
+  const ua = navigator.userAgent || '';
+  const kind = /iPhone/.test(ua) ? 'آيفون' : /iPad/.test(ua) ? 'آيباد' : /Android/.test(ua) ? 'موبايل أندرويد'
+             : /Windows/.test(ua) ? 'كمبيوتر ويندوز' : /Mac/.test(ua) ? 'ماك' : 'جهاز';
+  return kind;
+}
+
+async function approveDevice(name, btn) {
+  if (!DB.ready()) { toast(T('foot.local')); return false; }
+  if (!ADMIN_PIN) { toast('اكتب كلمة مرور الإدارة الأول'); askPassword(); return false; }
+  const id = (DEVICE && DEVICE.id) || newDeviceId();
+  const was = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'جاري الاعتماد…'; }
+  try {
+    const token = await DB.approveDevice(ADMIN_PIN, id, name || guessDeviceName());
+    DEVICE = { id, token: String(token), name: name || guessDeviceName() };
+    store.set('adminDevice', DEVICE);
+    DEVICE_OK = true; DEVICES_ON = true;
+    isAdmin = true;
+    sessionStorage.setItem('nawah.admin', '1');
+    toast('تم اعتماد الجهاز ده للإدارة');
+    startAdminWatch();
+    await enablePush(true);
+    return true;
+  } catch (e) {
+    if (missingFn(e)) { DEVICES_ON = false; toast('لازم تشغّل ملف أجهزة الإدارة في قاعدة البيانات الأول'); }
+    else if (/unauthorized/.test(String(e.message))) toast('كلمة المرور غلط');
+    else toast(T('err.net'));
+    return false;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = was; }
+    refreshAdminViews();
+  }
+}
+
+/* إلغاء اعتماد جهاز (أي جهاز، أو الجهاز ده نفسه) */
+async function removeDevice(target) {
+  try {
+    await DB.removeDevice(DEVICE && DEVICE.id, DEVICE && DEVICE.token, ADMIN_PIN, target);
+  } catch (e) { toast(T('err.net')); return false; }
+  if (DEVICE && target === DEVICE.id) await forgetThisDevice();
+  return true;
+}
+
+async function forgetThisDevice() {
+  try {
+    const reg = 'serviceWorker' in navigator && await navigator.serviceWorker.getRegistration();
+    const sub = reg && reg.pushManager && await reg.pushManager.getSubscription();
+    if (sub) await sub.unsubscribe();
+  } catch (e) {}
+  store.del('adminDevice');
+  DEVICE = null; DEVICE_OK = false; PUSH_STATE = '';
+}
+
+/* ── الإشعار وهو مقفول (Web Push) ── */
+function b64uToBytes(s) {
+  const pad = '='.repeat((4 - s.length % 4) % 4);
+  const raw = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+
+async function enablePush(ask) {
+  if (!DEVICE_OK || !DEVICE || !DB.ready()) return (PUSH_STATE = '');
+  const ios = /iPhone|iPad/.test(navigator.userAgent || '');
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    return (PUSH_STATE = ios && !standalone ? 'ios' : 'unsupported');
+  }
+  let perm = Notification.permission;
+  if (perm === 'default' && ask) { try { perm = await Notification.requestPermission(); } catch (e) {} }
+  if (perm !== 'granted') return (PUSH_STATE = perm);
+  store.set('admNotify', true);
+  try {
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((ok) => setTimeout(() => ok(null), 8000))
+    ]);
+    if (!reg) return (PUSH_STATE = 'error');
+    let sub = await reg.pushManager.getSubscription();
+    const key = b64uToBytes(VAPID_PUBLIC);
+    if (sub && sub.options && sub.options.applicationServerKey) {
+      const old = new Uint8Array(sub.options.applicationServerKey);
+      if (old.length !== key.length || old.some((b, i) => b !== key[i])) { await sub.unsubscribe(); sub = null; }
+    }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    await DB.savePush(DEVICE.id, DEVICE.token, sub.toJSON());
+    return (PUSH_STATE = 'ok');
+  } catch (e) {
+    return (PUSH_STATE = missingFn(e) ? 'nofn' : 'error');
+  }
+}
+
+/* الإدارة اتسحبت من الجهاز ده (اعتماده اتلغى من جهاز تاني) */
+function dropAdmin(msg) {
+  isAdmin = false; ADMIN_PIN = '';
+  sessionStorage.removeItem('nawah.admin'); sessionStorage.removeItem('nawah.pin');
+  $('#adminTab').hidden = true;
+  document.body.classList.remove('is-admin');
+  stopAdminWatch();
+  if (msg) toast(msg);
+  if (!$('#v-admin').hidden || !$('#v-areq').hidden) go('home');
+}
+
+function refreshAdminViews() {
+  if (!$('#v-admin').hidden) renderAdmin();
+  const open = $('#v-areq');
+  if (open && !open.hidden && open.dataset.no) renderAReq(open.dataset.no);
+}
+
+/* كارت «اعتماد الجهاز ده» */
+function approveCard(compact) {
+  return `<div class="note-box warn dev-approve">
+    <b>الجهاز ده مش معتمد للإدارة لسه</b>
+    <p>${compact ? 'اعتمده عشان تقدر تسند الطلبات من عليه.'
+      : 'اعتمده مرة واحدة ويفضل داخل على طول: يوصله إشعار بكل طلب جديد حتى لو الموقع مقفول، ويقدر يسند الطلبات للفنيين.'}</p>
+    <div class="dev-row">
+      <input class="dev-name" value="${esc(guessDeviceName())}" placeholder="اسم الجهاز — مثلاً: موبايل عبدالعزيز" aria-label="اسم الجهاز">
+      <button class="btn btn-primary" type="button" data-dev="approve">اعتماد الجهاز ده</button>
+    </div>
+  </div>`;
+}
+
+/* ── تبويب «أجهزة الإدارة» ── */
+async function admDevices(box) {
+  await probeDevices();
+  if (DEVICES_ON === false) {
+    box.innerHTML = `<div class="note-box warn"><b>خاصية الأجهزة مش متفعلة في قاعدة البيانات</b>
+      <p>شغّل ملف أجهزة الإدارة مرة واحدة في قاعدة البيانات (الخطوات في ملف «إعداد الإشعارات»)،
+      وبعدها ارجع هنا واعتمد أجهزتك.</p></div>`;
+    return;
+  }
+  let list = [];
+  let err = false;
+  try { list = (await DB.listDevices(DEVICE && DEVICE.id, DEVICE && DEVICE.token, ADMIN_PIN)) || []; }
+  catch (e) { err = true; }
+  const mine = DEVICE && DEVICE.id;
+  box.innerHTML = `
+    <p class="fine mb">أي جهاز يدخل بكلمة المرور ويضغط «اعتماد الجهاز ده» بيبقى جهاز إدارة: يوصله الإشعارات
+      ويقدر يسند الطلبات. تقدر تلغي أي جهاز من هنا — بيخرج من الإدارة فوراً ويبطّل يوصله إشعارات.</p>
+    ${DEVICE_OK ? `<div class="note-box ok"><b>✓ الجهاز ده معتمد: ${esc((DEVICE && DEVICE.name) || '')}</b>
+        <p>${pushLine()}</p>
+        ${PUSH_STATE !== 'ok' ? '<button class="btn btn-primary btn-block mt" type="button" data-anot="on">🔔 تفعيل الإشعارات على الجهاز ده</button>' : ''}
+      </div>` : approveCard(false)}
+    ${err ? `<div class="note-box warn"><b>${esc(T('err.net'))}</b></div>` : ''}
+    <h4 class="adm-h">الأجهزة المعتمدة (${num(list.length)})</h4>
+    <div class="adm-list">${list.length ? list.map((d) => `
+      <div class="adm-item dev-item">
+        <div class="dev-t">
+          <b>${esc(d.name || 'جهاز')}${d.id === mine ? ' <em class="st st-new">الجهاز ده</em>' : ''}</b>
+          <span>اتعتمد ${esc(fmtDate(new Date(d.created_at), false))} · آخر ظهور ${esc(d.last_seen ? ago(d.last_seen) : '—')}
+            · ${d.has_push ? '🔔 الإشعارات شغالة' : '🔕 الإشعارات مش متفعلة'}</span>
+        </div>
+        <button class="btn btn-quiet btn-sm" type="button" data-dev="remove" data-id="${esc(d.id)}" data-name="${esc(d.name || '')}">إلغاء</button>
+      </div>`).join('') : '<p class="fine">مفيش أجهزة معتمدة لسه.</p>'}</div>`;
+}
+
+function pushLine() {
+  return PUSH_STATE === 'ok' ? '🔔 الإشعارات شغالة حتى لو الموقع أو المتصفح مقفول.'
+    : PUSH_STATE === 'ios' ? 'على الآيفون: ثبّت التطبيق على الشاشة الرئيسية وافتحه منها، وبعدين فعّل الإشعارات.'
+    : PUSH_STATE === 'denied' ? 'الإشعارات مقفولة من إعدادات المتصفح — افتحها من إعدادات الموقع (رمز القفل جنب اللينك).'
+    : PUSH_STATE === 'unsupported' ? 'المتصفح ده مش بيدعم الإشعارات وهو مقفول — استخدم كروم.'
+    : PUSH_STATE === 'nofn' ? 'قاعدة البيانات محتاجة ملف أجهزة الإدارة عشان الإشعارات توصل وهو مقفول.'
+    : PUSH_STATE === 'error' ? 'تعذّر تفعيل الإشعارات على الجهاز ده — جرّب تاني.'
+    : 'الإشعارات مش متفعلة على الجهاز ده لسه.';
+}
+
 /* ══════════ التوصيل ══════════ */
 function initInbox() {
   document.addEventListener('click', async (e) => {
@@ -561,6 +806,14 @@ function initInbox() {
     const n = e.target.closest('[data-anot]');
     if (n) {
       const k = n.dataset.anot;
+      if (k === 'on' && DEVICE_OK) {
+        n.disabled = true;
+        const st = await enablePush(true);
+        toast(st === 'ok' ? 'تم — الإشعارات هتوصلك حتى لو الموقع مقفول' : pushLine());
+        if (st === 'ok') sysNotify('الإشعارات شغالة', 'هيوصلك إشعار مع كل طلب جديد.', { tag: 'adm-test' });
+        refreshAdminViews();
+        return;
+      }
       if (k === 'on') {
         if (!('Notification' in window)) { toast(T('notif.unsupported')); return; }
         const perm = await Notification.requestPermission();
@@ -574,6 +827,27 @@ function initInbox() {
         alertNewRequest({ no: 'S0', svc: (CFG.services[0] || {}).id, prio: 'high', name: 'تجربة التنبيه', block: '١٤', flat: '٣٠٢', stage: 0 });
       }
       paintInbox();
+      return;
+    }
+
+    const dv = e.target.closest('[data-dev]');
+    if (dv) {
+      if (dv.dataset.dev === 'approve') {
+        const inp = dv.closest('.dev-approve') && dv.closest('.dev-approve').querySelector('.dev-name');
+        const nm = (inp && inp.value.trim()) || guessDeviceName();
+        await approveDevice(nm, dv);
+        return;
+      }
+      if (dv.dataset.dev === 'remove') {
+        const self = DEVICE && dv.dataset.id === DEVICE.id;
+        if (!confirm(self ? 'إلغاء اعتماد الجهاز ده؟ هيخرج من الإدارة ويبطّل يوصله إشعارات.'
+                          : 'إلغاء اعتماد «' + (dv.dataset.name || 'الجهاز') + '»؟ هيخرج من الإدارة فوراً.')) return;
+        dv.disabled = true;
+        const ok = await removeDevice(dv.dataset.id);
+        if (ok && self) { dropAdmin('تم إلغاء اعتماد الجهاز ده'); return; }
+        if (ok) toast('تم إلغاء اعتماد الجهاز');
+        refreshAdminViews();
+      }
       return;
     }
 
@@ -624,6 +898,7 @@ function initInbox() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', (e) => {
       if (e.data && e.data.type === 'open-req' && e.data.no) openAReq(e.data.no);
+      if (e.data && e.data.type === 'push-new' && isAdmin) admPoll();      // وصل إشعار — حدّث القائمة فوراً
     });
   }
 }

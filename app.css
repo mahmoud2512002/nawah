@@ -1267,3 +1267,17 @@ body.is-tech .tab span, body.is-admin .tab span{ font-size:9px; }
 body .tabbar{ grid-template-columns:repeat(5,minmax(0,1fr)); }
 body.is-admin .tabbar, body.is-tech .tabbar{ grid-template-columns:repeat(6,minmax(0,1fr)); }
 body.is-tech.is-admin .tabbar{ grid-template-columns:repeat(7,minmax(0,1fr)); }
+
+/* اعتماد جهاز الإدارة */
+.dev-approve p{ margin:0 0 10px; }
+.dev-row{ display:flex; gap:8px; flex-wrap:wrap; }
+.dev-row input{
+  flex:1 1 180px; min-width:0; font-family:inherit; font-size:14px;
+  border:1.5px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; color:var(--ink);
+}
+.dev-row .btn{ flex:none; }
+.dev-item{ display:flex; align-items:center; gap:10px; }
+.dev-t{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.dev-t b{ font-size:14px; color:var(--navy); }
+.dev-t b .st{ font-style:normal; margin-inline-start:6px; vertical-align:middle; }
+.dev-t span{ font-size:11.5px; color:var(--muted); line-height:1.6; }

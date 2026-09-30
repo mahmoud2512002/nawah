@@ -752,6 +752,7 @@ function renderAdmin() {
   if (adminTab === 'tech')      box.innerHTML = admTech();
   if (adminTab === 'backend')   box.innerHTML = admBackend();
   if (adminTab === 'ann')       box.innerHTML = admAnn();
+  if (adminTab === 'devices')   { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admDevices(box); }
   if (adminTab === 'inbox')     { if (!box.querySelector('.inbox')) box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admInbox(box); }
   if (adminTab === 'archive')   { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admArchive(box); }
   if (adminTab === 'orders')    { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admOrders(box); }
@@ -1077,7 +1078,7 @@ function initAdmin() {
     if (act === 'togglelock') {
       const want = !CFG.locked;
       if (DB.ready()) {
-        DB.setLock(want, ADMIN_PIN)
+        (DEVICE_OK && DEVICE && !ADMIN_PIN ? DB.setLockDevice(DEVICE.id, DEVICE.token, want) : DB.setLock(want, ADMIN_PIN))
           .then(() => {
             CFG.locked = want;
             saveDraft();
@@ -1130,6 +1131,15 @@ function initAdmin() {
       store.del('cfgDraft');
       CFG = clone(REMOTE);
       toast(T('adm.reverted'));
+    }
+    if (act === 'logout' && DEVICE_OK && DEVICE) {
+      if (!confirm('الجهاز ده معتمد للإدارة. الخروج هيلغي اعتماده ويبطّل يوصله إشعارات — متأكد؟')) return;
+      removeDevice(DEVICE.id).then((ok) => {
+        if (!ok) return;
+        dropAdmin(T('adm.loggedOut'));
+        if (CFG.locked) renderLock();
+      });
+      return;
     }
     if (act === 'logout') {
       isAdmin = false;
@@ -1485,20 +1495,29 @@ async function bootExtras() {
   initAdmin();
   initInstallUI();
 
-  if (isAdmin) { $('#adminTab').hidden = false; document.body.classList.add('is-admin'); }
-
-  const hash = location.hash.replace('#', '');
-  if (hash === 'admin') { isAdmin ? go('admin') : askPassword(); }
-
   /* القفل الفوري من قاعدة البيانات له الأولوية على الملف */
   if (DB.init(CFG)) {
     const remoteLock = await DB.isLocked();
     if (remoteLock !== null) CFG.locked = remoteLock;
   }
+
+  /* جهاز إدارة معتمد؟ يدخل على طول من غير كلمة مرور */
+  const dev = await verifyDevice();
+  if (dev === true) { isAdmin = true; sessionStorage.setItem('nawah.admin', '1'); }
+  else if (dev === 'revoked') { isAdmin = false; sessionStorage.removeItem('nawah.admin'); setTimeout(() => toast('الجهاز ده اتلغى اعتماده من الإدارة'), 800); }
+
+  if (isAdmin) { $('#adminTab').hidden = false; document.body.classList.add('is-admin'); }
+
   if (CFG.locked && !isAdmin) { renderLock(); return; }
 
+  const hash = location.hash.replace('#', '');
+
   const wanted = new URLSearchParams(location.search).get('go');
-  go(VIEWS.indexOf(wanted) > -1 ? wanted : 'home');
+  if (hash === 'admin' && isAdmin) go('admin');
+  else {
+    go(VIEWS.indexOf(wanted) > -1 ? wanted : 'home');
+    if (hash === 'admin') askPassword();
+  }
 
   await bootExtras();
 
