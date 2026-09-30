@@ -311,5 +311,6 @@
   "announcements": [],
   "push": {
     "vapidPublic": "BHIqB3pVag2MUkyICBali4IcdywB7h8FgtPgn160myWg2ZmCCFFVtOfHdJvvQgVLLJRX2I6Eap0d1lWNo2X5xPA"
-  }
+  },
+  "woCloud": false
 }

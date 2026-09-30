@@ -463,7 +463,7 @@ async function renderAReq(no, soft) {
   const pool = dept.concat(extra);
   const changed = sel.slice().sort().join('|') !== assigned.slice().sort().join('|');
   const local = await PDFDB.get(r.no);
-  const pdfState = r.wo_pdf ? '☁ محفوظ في الأرشيف السحابي'
+  const pdfState = r.wo_pdf && woCloudOn() ? '☁ محفوظ في الأرشيف السحابي'
                  : local ? '✓ محفوظ على الجهاز ده'
                  : assigned.length ? 'لم يُحفظ بعد — اضغط «تحميل PDF»' : 'يصدر مع الإسناد';
   const assignedTechs = assigned.map(techById).filter(Boolean);
@@ -1037,7 +1037,7 @@ function initInbox() {
         if (act === 'share') { const ok = await shareBlob(blob, woFile(r), 'أمر شغل ' + r.no); if (!ok) saveBlob(blob, woFile(r)); }
         else saveBlob(blob, woFile(r));
         const st = $('#areqPdfState');
-        if (st) st.textContent = r.wo_pdf ? '☁ محفوظ في الأرشيف السحابي' : '✓ محفوظ على الجهاز ده';
+        if (st) st.textContent = r.wo_pdf && woCloudOn() ? '☁ محفوظ في الأرشيف السحابي' : '✓ محفوظ على الجهاز ده';
       } catch (err) {
         toast('تعذّر إنشاء الملف — استخدم «طباعة» ثم «حفظ كـ PDF».');
       } finally {

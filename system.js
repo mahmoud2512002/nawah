@@ -12,12 +12,14 @@
    لو لسه ما اتشغّلش، التطبيق بيكمّل بالطريقة القديمة من غير ما يقف.
    ══════════════════════════════════════════════════════════════ */
 
-const APP_VERSION = '2026.10';
+const APP_VERSION = '2026.10.2';
 const SCHEMA_NEED = 1;                         // أقل إصدار لقاعدة البيانات يشتغل معاه الكود ده
 
 /* حدود الخطة المجانية (غيّرها لو الاشتراك اتغير) */
 const PLAN_DB_BYTES      = 500 * 1024 * 1024;
 const PLAN_STORAGE_BYTES = 1024 * 1024 * 1024;
+/* الطلب الواحد بكل عملياته في السجل بياخد حوالي ١٫٥ ك.ب (اتقاس على ٢٠ ألف طلب) — ٢ ك.ب للأمان */
+const BYTES_PER_REQUEST  = 2048;
 
 const SYS = {
   cfgServer: null,         // true = الإعدادات من السيرفر · false = الدالة مش موجودة · null = لسه معرفناش
@@ -170,7 +172,7 @@ function admPublishServer() {
 const STG_SHORT = ['استلام', 'إسناد', 'تنفيذ', 'إصلاح', 'غلق'];
 const LOG_GROUPS = {
   req:  ['new', 'assign', 'stage', 'rate'],
-  adm:  ['tech_add', 'tech_edit', 'tech_del', 'config', 'lock', 'unlock', 'cm_hide', 'cm_show', 'cm_reply', 'backup', 'restore'],
+  adm:  ['tech_add', 'tech_edit', 'tech_del', 'config', 'lock', 'unlock', 'cm_hide', 'cm_show', 'cm_reply', 'backup', 'restore', 'storage_clear'],
   sec:  ['login_fail', 'device_add', 'device_del', 'pass']
 };
 
@@ -204,6 +206,7 @@ function logText(a) {
     case 'login_fail': return det;
     case 'backup':     return 'تنزيل نسخة احتياطية';
     case 'restore':    return `استرجاع نسخة احتياطية: ${det}`;
+    case 'storage_clear': return 'مسح أوامر الشغل القديمة من السيرفر';
     default:           return esc(a.action) + (ref ? ' ' + ref : '') + (det ? ' — ' + det : '');
   }
 }
@@ -259,7 +262,7 @@ function paintLog(box) {
 /* ══════════ ٣. فحص المنظومة ══════════ */
 function fmtBytes(n) {
   n = Number(n) || 0;
-  const trim = (x) => String(x).replace(/\.?0+$/, '');
+  const trim = (x) => String(Number(x)).replace('.', LANG === 'ar' ? '٫' : '.');   // 500 · 1.00 → 1 · 8.60 → 8٫6
   if (!n) return num(0);
   if (n < 1024 * 1024) return num(Math.max(1, Math.round(n / 1024))) + ' ك.ب';
   if (n < 1024 * 1024 * 1024) return num(trim((n / 1048576).toFixed(n < 10485760 ? 1 : 0))) + ' م.ب';
@@ -295,7 +298,8 @@ function healthIssues(h) {
   if (!h.hook || h.pg_net === false) n++;
   if (!h.push_devices) n++;
   if (Number(h.db_bytes || 0) > PLAN_DB_BYTES * 0.7) n++;
-  if (Number(h.storage_bytes || 0) > PLAN_STORAGE_BYTES * 0.7) n++;
+  if (woCloudOn() && Number(h.storage_bytes || 0) > PLAN_STORAGE_BYTES * 0.7) n++;
+  if (!woCloudOn() && h.bucket === true) n++;
   if (Number(h.stale_new || 0) > 0) n++;
   if (!h.backup_at || Date.now() - new Date(h.backup_at).getTime() > 7 * 864e5) n++;
   return n;
@@ -350,11 +354,27 @@ async function admHealth(box) {
        : 'ولا جهاز. افتح «الطلبات المستلمة» واضغط «تفعيل الإشعارات».'));
 
   const dbb = Number(h.db_bytes || 0);
+  const room = Math.max(0, PLAN_DB_BYTES - dbb);
+  const fits = Math.floor(room / BYTES_PER_REQUEST);
+  const perDay = Number(h.req_30d || 0) / 30;
+  const years = perDay > 0 ? fits / perDay / 365 : 0;
+  const runway = perDay >= 1
+    ? ` بالمعدل الحالي (حوالي ${num(Math.round(perDay))} طلب في اليوم) ده يكفي ${years >= 20 ? 'أكتر من ' + num(20) + ' سنة' : 'حوالي ' + num(Math.max(1, Math.round(years))) + ' سنة'}.`
+    : '';
   rows.push(healthRow(dbb > PLAN_DB_BYTES * 0.85 ? 'bad' : dbb > PLAN_DB_BYTES * 0.7 ? 'warn' : 'ok', 'مساحة قاعدة البيانات',
-    `${fmtBytes(dbb)} من ${fmtBytes(PLAN_DB_BYTES)} في الخطة المجانية.${dbb > PLAN_DB_BYTES * 0.7 ? ' قرّبت تخلص: نزّل نسخة احتياطية وفكّر في الخطة المدفوعة.' : ''}`
+    `${fmtBytes(dbb)} من ${fmtBytes(PLAN_DB_BYTES)} في الخطة المجانية. الباقي يشيل حوالي ${fits >= 1000 ? num(Math.round(fits / 1000)) + ' ألف' : num(fits)} طلب كمان.${runway}`
+    + (dbb > PLAN_DB_BYTES * 0.7 ? ' قرّبت تخلص: نزّل نسخة احتياطية وفكّر في الخطة المدفوعة.' : '')
     + meter(dbb, PLAN_DB_BYTES)));
 
-  if (h.bucket === false) {
+  if (!woCloudOn()) {
+    const old = Number(h.pdfs || 0);
+    const leftovers = h.bucket === true;
+    rows.push(healthRow(leftovers ? 'warn' : 'ok', 'مساحة الملفات',
+      'أوامر الشغل مبتترفعش على السيرفر — بتتعمل على الجهاز وقت ما تتطلب، فمساحة الملفات مش بتزيد.'
+      + (leftovers ? (old ? ` لسه فيه ${num(old)} ملف قديم من قبل التحديث (${fmtBytes(Number(h.storage_bytes || 0))}).`
+                          : ' لسه فيه مكان تخزين قديم لأوامر الشغل.') : ' مساحة الملفات صفر.'),
+      leftovers ? '<button class="btn btn-quiet btn-sm mt" type="button" data-sys="clearpdf">امسح أوامر الشغل القديمة</button>' : ''));
+  } else if (h.bucket === false) {
     rows.push(healthRow('bad', 'أرشيف أوامر الشغل', 'مكان حفظ الملفات مش موجود. شغّل ملف التركيب الموحّد.'));
   } else if (h.storage_bytes != null && !(Number(h.pdfs || 0) === 0 && Number(h.wo_links || 0) > 0)) {
     const sb = Number(h.storage_bytes || 0);
@@ -451,6 +471,24 @@ async function restoreBackup(file) {
 }
 
 
+/* مسح أوامر الشغل القديمة من السيرفر — دالة الإشعارات بتمسحها وتبعت إشعار لما تخلص */
+async function clearOldPDFs(btn) {
+  if (!confirm('مسح كل أوامر الشغل القديمة من السيرفر؟\n\nمش هتحتاجها: أي أمر شغل بيتعمل تاني من بيانات الطلب في أي وقت.')) return;
+  btn.disabled = true;
+  let r;
+  try { r = await DB.rpc('admin_clear_storage', DB.cred()); }
+  catch (e) { r = is404(e) ? 'old-db' : 'net'; }
+  if (r === 'sent') {
+    toast('بيتمسحوا دلوقتي — هيوصلك إشعار لما يخلصوا');
+    setTimeout(() => { if (adminTab === 'health' && !$('#v-admin').hidden) admHealth($('#admBody')); }, 9000);
+    return;
+  }
+  btn.disabled = false;
+  toast(r === 'no-hook' ? 'رابط دالة الإشعارات ناقص — شوف سطر «الإشعارات والموقع مقفول»'
+      : r === 'old-db' ? 'شغّل ملف التركيب الموحّد الأول' : T('err.net'));
+}
+
+
 /* ══════════ ٥. كلمة مرور الإدارة ══════════ */
 function passCard() {
   return `
@@ -513,6 +551,7 @@ document.addEventListener('click', (e) => {
   if (k === 'backup')  { downloadBackup(b); return; }
   if (k === 'pass')    { changePass(b); return; }
   if (k === 'gonew')   { INBOX.filter = 'new'; adminTab = 'inbox'; renderAdmin(); return; }
+  if (k === 'clearpdf') { clearOldPDFs(b); return; }
 });
 
 document.addEventListener('change', (e) => {

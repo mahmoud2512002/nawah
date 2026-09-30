@@ -239,9 +239,14 @@ async function archiveWO(r) {
   return rec;
 }
 
+/* رفع أوامر الشغل للسيرفر مقفول افتراضياً — عشان مساحة التخزين عمرها ما تتملي.
+   أمر الشغل بيتعمل من بيانات الطلب في أي وقت ومن أي جهاز، فمش محتاج يتخزن.
+   (لو عميل عايز أرشيف سحابي: "woCloud": true في الإعدادات + سياسة الرفع في ملف التركيب) */
+const woCloudOn = () => !!(typeof CFG !== 'undefined' && CFG && CFG.woCloud);
+
 /* رفع النسخة للأرشيف السحابي — لو فشل بيتعاد تلقائياً في الفتحة الجاية */
 async function pushWO(rec) {
-  if (!DB.ready() || rec.cloud) return rec;
+  if (!DB.ready() || rec.cloud || !woCloudOn()) return rec;
   try {
     rec.cloud = await DB.uploadPDF(rec.no + '.pdf', rec.blob);
     await PDFDB.put(rec);
@@ -251,7 +256,7 @@ async function pushWO(rec) {
 }
 
 async function flushWO() {
-  if (!DB.ready() || (TECH && !isAdmin)) return;          // الرفع للأرشيف من جهاز الإدارة بس
+  if (!woCloudOn() || !DB.ready() || (TECH && !isAdmin)) return;          // الرفع للأرشيف من جهاز الإدارة بس
   const all = await PDFDB.all();
   for (const rec of all) if (!rec.cloud) await pushWO(rec);
 }
@@ -263,7 +268,7 @@ async function woPDF(r, fresh) {
   if (TECH) return issuedPDF(r);
   const local = await PDFDB.get(r.no);
   if (local && local.blob && TECH == null) return local.blob;
-  if (DB.ready()) {
+  if (DB.ready() && woCloudOn()) {
     try {
       const url = r.wo_pdf || DB.pdfURL(r.no + '.pdf');
       const res = await fetch(url + (url.indexOf('?') > -1 ? '&' : '?') + 'v=' + Date.now(), { cache: 'no-store' });
@@ -292,7 +297,17 @@ async function issuedURL(r) {
   return r.wo_pdf || '';
 }
 
+/* من غير أرشيف سحابي: الطلب المسند للفني ده = أمر شغل صادر، وموبايله بيعمل
+   نفس الورقة من نفس البيانات (الإسناد وأرقام الكارنيهات جايين من السيرفر) */
+const issuedLocally = (r) => !woCloudOn() && techIdsOf(r).length > 0 && (r.stage | 0) >= 1;
+
 async function issuedPDF(r) {
+  if (!woCloudOn()) {
+    if (!issuedLocally(r)) throw new Error('not-issued');
+    await needQR();
+    await loadTechCards();
+    return htmlToPDF(woSheet(r));
+  }
   const url = await issuedURL(r);
   const kept = await PDFDB.get(r.no);
   const mine = kept && kept.issued && kept.blob ? kept : null;
@@ -607,7 +622,7 @@ function paintTechCards() {
    فالفني بياخد آخر نسخة من الإدارة من غير ما حد يفتحها */
 let WO_REFRESHING = false;
 async function refreshIssuedWOs(retry) {
-  if (WO_REFRESHING || !isAdmin || typeof INBOX === 'undefined') return;
+  if (!woCloudOn() || WO_REFRESHING || !isAdmin || typeof INBOX === 'undefined') return;   // من غير سحابة الفني بيعمل آخر نسخة بنفسه
   if (!INBOX.rows.length) { if (!retry) setTimeout(() => refreshIssuedWOs(true), 10000); return; }
   WO_REFRESHING = true;
   try {
@@ -659,9 +674,9 @@ async function renderWO(no) {
   /* الفني: النسخة اللي أصدرتها الإدارة بس */
   if (techView) {
     box.innerHTML = hero('… جاري التحميل');
-    const url = await issuedURL(r);
+    const url = woCloudOn() ? await issuedURL(r) : '';
     const kept = await PDFDB.get(r.no);
-    const has = url || (kept && kept.issued);
+    const has = url || (kept && kept.issued) || issuedLocally(r);
     box.innerHTML = hero(has ? '✓ صادر من الإدارة' : 'لسه ما اتصدرش من الإدارة') + (has ? `
     <div class="pp-note">
       ده أمر الشغل زي ما أصدرته الإدارة بالظبط — افتحه أو حمّله أو شاركه، وخليه معاك
@@ -685,9 +700,9 @@ async function renderWO(no) {
   if (rec && rec.issued) rec = null;                       // نسخة جت من السحابة مش إصدار الجهاز ده
   const stale = !!(rec && techIdsOf(r).length && rec.sig !== woSig(r));
   const state = stale ? '… جاري تحديث أمر الشغل بآخر بيانات'
-              : rec && rec.cloud ? '☁ محفوظ في الأرشيف السحابي وعلى هذا الجهاز'
-              : rec ? '✓ محفوظ في الأرشيف على هذا الجهاز'
-              : '… جاري الحفظ في الأرشيف';
+              : rec && rec.cloud && woCloudOn() ? '☁ محفوظ في الأرشيف السحابي وعلى هذا الجهاز'
+              : rec ? '✓ محفوظ على هذا الجهاز'
+              : '… جاري التجهيز';
 
   box.innerHTML = `${hero(state)}
     <div class="pp-note">
@@ -712,7 +727,7 @@ async function renderWO(no) {
       const done = await archiveWO(r);
       if (done.cloud && typeof inboxTouch === 'function') inboxTouch(r.no, { wo_pdf: done.cloud });
       const el = $('#woState');
-      if (el) el.textContent = done.cloud ? '☁ محفوظ في الأرشيف السحابي وعلى هذا الجهاز' : '✓ محفوظ في الأرشيف على هذا الجهاز';
+      if (el) el.textContent = done.cloud ? '☁ محفوظ في الأرشيف السحابي وعلى هذا الجهاز' : '✓ محفوظ على هذا الجهاز';
     } catch (e) {
       const el = $('#woState');
       if (el) el.textContent = 'تعذّر الحفظ التلقائي — استخدم زر «تحميل PDF».';
@@ -760,28 +775,32 @@ async function admOrders(box) {
     || String(r.no).toUpperCase().indexOf(q) > -1
     || String(r.wo || '').toUpperCase().indexOf(q) > -1
     || String(r.block || '') === q);
-  const saved = rows.filter((r) => local[r.no] || r.wo_pdf).length;
+  const cloud = woCloudOn();
+  const inCloud = (r) => cloud && ((local[r.no] && local[r.no].cloud) || r.wo_pdf);
+  const saved = rows.filter((r) => local[r.no] || inCloud(r)).length;
 
   box.innerHTML = `
-    <p class="fine mb">أمر الشغل بيصدر لما تسند الطلب من «الطلبات المستلمة»، ويتحفظ ملفَّ PDF باسم رقم البحث.
+    <p class="fine mb">${cloud
+      ? 'أمر الشغل بيصدر لما تسند الطلب من «الطلبات المستلمة»، ويتحفظ ملفَّ PDF باسم رقم البحث.'
+      : 'أمر الشغل بيتعمل من بيانات الطلب في أي وقت ومن أي جهاز إدارة، ومبيترفعش على السيرفر — عشان المساحة. افتح أي طلب وحمّله أو اطبعه.'}
       ابحث برقم البحث (مثل S12) أو رقم أمر الشغل أو رقم العمارة.</p>
     <div class="arch-stats">
       <div><b>${num(rows.length)}</b><span>أمر شغل</span></div>
-      <div><b>${num(saved)}</b><span>مؤرشف PDF</span></div>
-      <div><b>${num(rows.filter((r) => (local[r.no] && local[r.no].cloud) || r.wo_pdf).length)}</b><span>في السحابة</span></div>
-      <div><b>${num(rows.length - saved)}</b><span>لم يُؤرشف بعد</span></div>
+      <div><b>${num(saved)}</b><span>${cloud ? 'مؤرشف PDF' : 'على الجهاز ده'}</span></div>
+      ${cloud ? `<div><b>${num(rows.filter(inCloud).length)}</b><span>في السحابة</span></div>` : ''}
+      <div><b>${num(rows.length - saved)}</b><span>${cloud ? 'لم يُؤرشف بعد' : 'بيتعمل وقت الطلب'}</span></div>
     </div>
     <div class="track-row mt">
       <input id="woSearch" value="${esc(woQuery)}" placeholder="رقم البحث — مثال: S12" autocomplete="off" inputmode="text">
       <button class="btn btn-primary" type="button" data-wo="find">بحث</button>
     </div>
-    ${rows.length - saved ? `<button class="btn btn-quiet btn-block mt" type="button" data-wo="backfill">أرشفة الأوامر الناقصة (${num(rows.length - saved)})</button>` : ''}
+    ${cloud && rows.length - saved ? `<button class="btn btn-quiet btn-block mt" type="button" data-wo="backfill">أرشفة الأوامر الناقصة (${num(rows.length - saved)})</button>` : ''}
     <div class="arch-list">
       ${shown.slice(0, 120).map((r) => {
         const sv = svcById(r.svc), c = colorOf(sv);
-        const st = (local[r.no] && local[r.no].cloud) || r.wo_pdf ? '<em class="wo-b cloud">☁ سحابي</em>'
+        const st = inCloud(r) ? '<em class="wo-b cloud">☁ سحابي</em>'
                  : local[r.no] ? '<em class="wo-b">على الجهاز</em>'
-                 : '<em class="wo-b none">غير مؤرشف</em>';
+                 : cloud ? '<em class="wo-b none">غير مؤرشف</em>' : '';
         return `<div class="arch" data-p="${esc(r.prio)}">
           <span class="ic" style="background:${c.tint};color:${c.ink}">${svg(iconOf(sv))}</span>
           <div class="arch-t">
@@ -1251,7 +1270,7 @@ function initCards() {
     if (act === 'wa')   { window.open(waLink(ADMIN_WA() || '', requestText(r)), '_blank', 'noopener'); return; }
     const techView = !!TECH && !isAdmin;
     /* الفني بيفتح نسخة الإدارة نفسها — مفيش ورقة بتتعمل على موبايله */
-    if ((act === 'view' || act === 'print') && techView && r.wo_pdf && navigator.onLine !== false) {
+    if ((act === 'view' || act === 'print') && techView && woCloudOn() && r.wo_pdf && navigator.onLine !== false) {
       window.open(r.wo_pdf, '_blank', 'noopener');
       return;
     }
