@@ -362,7 +362,7 @@ function paintInbox() {
     ${INBOX.locked ? '' : ''}
     ${!DB.ready() ? `<div class="note-box warn"><b>${esc(T('foot.local'))}</b><p>بتظهر هنا طلبات الجهاز ده بس لحد ما قاعدة البيانات تتربط.</p></div>` : ''}
     <div class="arch-stats inb-filters" role="tablist">
-      ${[['new', 'جديدة — محتاجة إسناد'], ['work', 'جارية'], ['done', 'تم الإصلاح'], ['all', 'الكل']].map(([k, label]) =>
+      ${[['new', 'جديدة'], ['work', 'جارية'], ['done', 'تم الإصلاح'], ['all', 'الكل']].map(([k, label]) =>
         `<button type="button" role="tab" class="${INBOX.filter === k ? 'on' : ''} ${k === 'new' && cnt.new ? 'hot' : ''}" data-inf="${k}">
           <b>${num(cnt[k])}</b><span>${label}</span></button>`).join('')}
     </div>
@@ -844,7 +844,7 @@ async function enablePush(ask) {
     ]);
     if (!reg) return (PUSH_STATE = 'error');
     let sub = await reg.pushManager.getSubscription();
-    const key = b64uToBytes(VAPID_PUBLIC);
+    const key = b64uToBytes((CFG && CFG.push && CFG.push.vapidPublic) || VAPID_PUBLIC);
     if (sub && sub.options && sub.options.applicationServerKey) {
       const old = new Uint8Array(sub.options.applicationServerKey);
       if (old.length !== key.length || old.some((b, i) => b !== key[i])) { await sub.unsubscribe(); sub = null; }
@@ -912,7 +912,7 @@ async function admDevices(box) {
   const mine = DEVICE && DEVICE.id;
   box.innerHTML = `
     <p class="fine mb">أي جهاز يدخل بكلمة المرور ويضغط «اعتماد الجهاز ده» بيبقى جهاز إدارة: يوصله الإشعارات
-      ويقدر يسند الطلبات. تقدر تلغي أي جهاز من هنا — بيخرج من الإدارة فوراً ويبطّل يوصله إشعارات.</p>
+      ويقدر يسند الطلبات، وكل الأجهزة التانية بيوصلها إشعار باسمه. تقدر تلغي أي جهاز من هنا — بيخرج من الإدارة فوراً.</p>
     ${DEVICE_OK ? `<div class="note-box ok"><b>✓ الجهاز ده معتمد: ${esc((DEVICE && DEVICE.name) || '')}</b>
         <p>${pushLine()}</p>
         ${PUSH_STATE !== 'ok' ? '<button class="btn btn-primary btn-block mt" type="button" data-anot="on">🔔 تفعيل الإشعارات على الجهاز ده</button>' : ''}
@@ -930,7 +930,8 @@ async function admDevices(box) {
           ? `<button class="btn btn-primary btn-sm" type="button" data-dev="accept" data-id="${esc(d.id)}">موافقة</button>
              <button class="btn btn-quiet btn-sm" type="button" data-dev="remove" data-id="${esc(d.id)}" data-name="${esc(d.name || '')}">رفض</button>`
           : `<button class="btn btn-quiet btn-sm" type="button" data-dev="remove" data-id="${esc(d.id)}" data-name="${esc(d.name || '')}">إلغاء</button>`}
-      </div>`).join('') : `<p class="fine">${DEVICE_OK || DB.secure === false ? 'مفيش أجهزة معتمدة لسه.' : 'القائمة بتظهر على الأجهزة المعتمدة بس.'}</p>`}</div>`;
+      </div>`).join('') : `<p class="fine">${DEVICE_OK || DB.secure === false ? 'مفيش أجهزة معتمدة لسه.' : 'القائمة بتظهر على الأجهزة المعتمدة بس.'}</p>`}</div>
+    ${DEVICE_OK && typeof passCard === 'function' ? passCard() : ''}`;
 }
 
 function pushLine() {
