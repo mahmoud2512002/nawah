@@ -6,12 +6,10 @@
    config.json ويُحرَّر من لوحة الأدمن داخل التطبيق.
    ══════════════════════════════════════════════════════════════ */
 
-/* كلمة مرور الإدارة — مخزّنة كبصمة SHA-256 مش كنص مكشوف.
-   لتغييرها: افتح الكونسول واكتب
-     crypto.subtle.digest('SHA-256', new TextEncoder().encode('الرقم الجديد'))
-       .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
-   وحط الناتج هنا. */
-const ADMIN_HASH = '133426291639704d4fcda38152f1eecfa6f017ad52d184635a7907a292ada139';
+/* كلمة مرور الإدارة بتتراجع في السيرفر بس (admin_check).
+   البصمة كانت هنا في الكود العام وكانت بتتفك في أقل من ثانية،
+   فاتشالت — متحطش كلمة المرور ولا بصمتها في أي ملف جوه site. */
+const ADMIN_HASH = '';
 
 async function sha256(txt) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));

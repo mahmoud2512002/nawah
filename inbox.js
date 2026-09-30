@@ -674,10 +674,16 @@ async function approveDevice(name, btn) {
     DEVICE = { id, token: String(res.token), name: nm };
     store.set('adminDevice', DEVICE);
     if (res.status === 'pending') {
-      DEVICE_OK = false; DEVICE_PENDING = true;
-      toast('اتبعت طلب اعتماد — لازم جهاز إدارة معتمد يوافق عليه');
-      watchPending();
-      return false;
+      /* الاعتماد الفوري (instant-approve.sql): كلمة المرور + «اعتماد الجهاز ده» تكفي،
+         والجهاز بيتعتمد في نفس اللحظة — نتأكد من السيرفر ونكمّل على طول */
+      let st = '';
+      try { st = await DB.deviceState(id, DEVICE.token); } catch (e) { /* نكمّل تحت */ }
+      if (st !== 'ok') {
+        DEVICE_OK = false; DEVICE_PENDING = true;
+        toast('الجهاز اتسجّل بس لسه مش متعتمد — شغّل ملف الاعتماد الفوري في قاعدة البيانات');
+        watchPending();
+        return false;
+      }
     }
     await becomeApproved();
     toast('تم اعتماد الجهاز ده للإدارة');
@@ -870,8 +876,8 @@ function approveCard(compact) {
   if (DEVICE_PENDING) {
     return `<div class="note-box warn dev-approve">
       <b>⏳ الجهاز ده مستني موافقة الإدارة</b>
-      <p>اتبعت طلب اعتماد باسم «${esc((DEVICE && DEVICE.name) || '')}». محتاج جهاز إدارة معتمد يوافق عليه
-      من تبويب «أجهزة الإدارة» — وأول ما يوافق هتدخل على طول.</p>
+      <p>اتسجّل باسم «${esc((DEVICE && DEVICE.name) || '')}» بس لسه مش متعتمد.
+      اتأكد إن ملف الاعتماد الفوري اتشغّل في قاعدة البيانات — وبعدها الزرار هيرجع وتعتمده بضغطة واحدة.</p>
     </div>`;
   }
   return `<div class="note-box warn dev-approve">
