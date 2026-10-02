@@ -187,10 +187,9 @@ const I18N = {
   'home.eyebrow':     { ar:'خدمات المدينة السكنية', en:'Residential city services', ru:'Услуги жилого городка' },
   'home.newBtn':      { ar:'طلب صيانة جديد', en:'New maintenance request', ru:'Новая заявка' },
   'home.emgBtn':      { ar:'طوارئ',          en:'Emergency', ru:'Экстренно' },
-  'home.cOpen':       { ar:'جديدة',          en:'New',       ru:'Новые' },
-  'home.cWork':       { ar:'جارية',          en:'In progress', ru:'В работе' },
+  'home.cOpen':       { ar:'طلب مفتوح',      en:'Open',      ru:'Открытых' },
+  'home.cWork':       { ar:'جاري التنفيذ',   en:'In progress', ru:'В работе' },
   'home.cDone':       { ar:'تم الإصلاح',     en:'Completed', ru:'Выполнено' },
-  'home.cAll':        { ar:'الكل',           en:'Total',     ru:'Всего' },
   'home.pickSvc':     { ar:'اختر نوع الخدمة', en:'Choose a service', ru:'Выберите услугу' },
 
   'verify.title':     { ar:'قبل ما تفتح الباب — اتأكد', en:'Before you open the door — check', ru:'Прежде чем открыть дверь — проверьте' },

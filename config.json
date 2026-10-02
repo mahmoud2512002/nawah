@@ -308,9 +308,5 @@
     "key": "sb_publishable_LUchxzRyHOeJ95zUPP0S8A_vFilEJ84",
     "note": "Supabase Project URL + publishable key"
   },
-  "announcements": [],
-  "push": {
-    "vapidPublic": "BHIqB3pVag2MUkyICBali4IcdywB7h8FgtPgn160myWg2ZmCCFFVtOfHdJvvQgVLLJRX2I6Eap0d1lWNo2X5xPA"
-  },
-  "woCloud": false
+  "announcements": []
 }
