@@ -143,10 +143,9 @@
       </section>
 
       <div class="counters">
-        <div class="counter"><b id="cOpen">0</b><span data-t="home.cOpen">جديدة</span></div>
-        <div class="counter"><b id="cWork">0</b><span data-t="home.cWork">جارية</span></div>
+        <div class="counter"><b id="cOpen">0</b><span data-t="home.cOpen">طلب مفتوح</span></div>
+        <div class="counter"><b id="cWork">0</b><span data-t="home.cWork">جاري التنفيذ</span></div>
         <div class="counter"><b id="cDone">0</b><span data-t="home.cDone">تم الإصلاح</span></div>
-        <div class="counter"><b id="cAll">0</b><span data-t="home.cAll">الكل</span></div>
       </div>
 
       <section class="card track-box">
@@ -343,37 +342,20 @@
         <i class="pub-dot" id="pubDot" hidden title="تعديلات غير منشورة"></i>
       </div>
 
-      <nav class="adm-nav" id="admTabs" aria-label="أقسام لوحة الإدارة">
-        <div class="adm-grp">
-          <span class="adm-grp-t">الشغل اليومي</span>
-          <div class="adm-tabs">
-            <button class="chip on" data-tab="inbox" type="button">الطلبات المستلمة <i class="chip-n" id="inboxCount" hidden>0</i></button>
-            <button class="chip" data-tab="orders" type="button">أوامر الشغل</button>
-            <button class="chip" data-tab="tech" type="button" data-t="adm.tTech">الفنيين</button>
-            <button class="chip chip-go" data-go="cards" type="button">الكارنيهات</button>
-          </div>
-        </div>
-        <div class="adm-grp">
-          <span class="adm-grp-t">محتوى الموقع</span>
-          <div class="adm-tabs">
-            <button class="chip" data-tab="services" type="button" data-t="adm.tServices">الخدمات</button>
-            <button class="chip" data-tab="lines" type="button" data-t="adm.tLines">الأرقام</button>
-            <button class="chip" data-tab="content" type="button" data-t="adm.tContent">النصوص</button>
-            <button class="chip" data-tab="ann" type="button" data-t="adm.tAnn">الإعلانات</button>
-            <button class="chip" data-tab="lock" type="button" data-t="adm.tLock">القفل</button>
-          </div>
-        </div>
-        <div class="adm-grp">
-          <span class="adm-grp-t">المنظومة</span>
-          <div class="adm-tabs">
-            <button class="chip" data-tab="devices" type="button">أجهزة الإدارة</button>
-            <button class="chip" data-tab="log" type="button">السجل</button>
-            <button class="chip" data-tab="health" type="button">فحص المنظومة</button>
-            <button class="chip" data-tab="backend" type="button" data-t="adm.tBackend">السيرفر</button>
-            <button class="chip" data-tab="publish" type="button" data-t="adm.tPublish">نشر</button>
-          </div>
-        </div>
-      </nav>
+      <div class="adm-tabs" id="admTabs">
+        <button class="chip on" data-tab="inbox" type="button">الطلبات المستلمة <i class="chip-n" id="inboxCount" hidden>0</i></button>
+        <button class="chip" data-tab="orders" type="button">أوامر الشغل</button>
+        <button class="chip" data-tab="tech" type="button" data-t="adm.tTech">الفنيين</button>
+        <button class="chip" data-tab="devices" type="button">أجهزة الإدارة</button>
+        <button class="chip chip-go" data-go="cards" type="button">الكارنيهات</button>
+        <button class="chip" data-tab="services" type="button" data-t="adm.tServices">الخدمات</button>
+        <button class="chip" data-tab="lines" type="button" data-t="adm.tLines">الأرقام</button>
+        <button class="chip" data-tab="content" type="button" data-t="adm.tContent">النصوص</button>
+        <button class="chip" data-tab="ann" type="button" data-t="adm.tAnn">الإعلانات</button>
+        <button class="chip" data-tab="backend" type="button" data-t="adm.tBackend">السيرفر</button>
+        <button class="chip" data-tab="lock" type="button" data-t="adm.tLock">القفل</button>
+        <button class="chip" data-tab="publish" type="button" data-t="adm.tPublish">نشر</button>
+      </div>
 
       <div class="card adm-card" id="admBody"></div>
     </section>
@@ -505,7 +487,7 @@
     <span class="grip" aria-hidden="true"></span>
     <h3 id="passTitle" data-t="pass.title">دخول الإدارة</h3>
     <p class="fine center" data-t="pass.hint">اكتب كلمة المرور للوصول للوحة التحكم.</p>
-    <label class="fld"><input id="passInput" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••" class="pass-in"></label>
+    <label class="fld"><input id="passInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="••••••••••" class="pass-in pass-long"></label>
     <p class="err center" id="passErr" hidden data-t="pass.err">كلمة المرور غير صحيحة</p>
     <button class="btn btn-primary btn-block" id="passGo" type="button" data-t="pass.go">دخول</button>
     <button class="btn btn-quiet btn-block" data-close type="button" data-t="cancel">إلغاء</button>
@@ -609,7 +591,6 @@
 <script src="community.js"></script>
 <script src="paper.js"></script>
 <script src="inbox.js"></script>
-<script src="system.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

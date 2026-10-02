@@ -189,23 +189,10 @@ const DB = {
     return this.url + '/storage/v1/object/public/work-orders/' + encodeURIComponent(name);
   },
 
-  async uploadPDF(name, blob) {
-    if (!this.ready()) throw new Error('backend-off');
-    // اسم عشوائي محدش يقدر يخمّنه (S12-7f3a…pdf) — الرابط بيتحفظ جنب الطلب بس
-    const rnd = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
-    name = String(name).replace(/\.pdf$/i, '') + '-' + rnd + '.pdf';
-    const res = await fetch(this.url + '/storage/v1/object/work-orders/' + encodeURIComponent(name), {
-      method: 'POST',
-      headers: {
-        'apikey': this.key,
-        'Authorization': 'Bearer ' + this.key,
-        'Content-Type': 'application/pdf',
-        'cache-control': 'no-cache'
-      },
-      body: blob
-    });
-    if (!res.ok) throw new Error('upload-' + res.status);
-    return this.pdfURL(name);
+  /* الرفع متوقف: مفيش ملفات بتترفع على السيرفر خالص (security-v2.sql
+     قفل المخزن). أمر الشغل بيتحفظ على جهاز الإدارة وبيتصدر من جديد. */
+  async uploadPDF() {
+    throw new Error('upload-disabled');
   },
 
   /* ── counters ─────────────────────────────────────── */
@@ -239,11 +226,9 @@ const DB = {
   savePush(id, token, sub)       { return this.rpc('save_push', { dev_id: id, dev_token: token, sub }); },
   setLockDevice(id, token, flag) { return this.rpc('set_lock_device', { dev_id: id, dev_token: token, flag: !!flag }); },
 
-  async setLock(flag, pass) {
-    return this.req('rpc/set_lock', {
-      method: 'POST',
-      body: JSON.stringify({ flag: !!flag, pass: String(pass) })
-    });
+  /* القفل بكلمة المرور لوحدها اتشال من السيرفر (nawah-install.sql) */
+  async setLock() {
+    throw new Error('lock-needs-device');
   },
 
   async stats() {

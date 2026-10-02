@@ -172,7 +172,7 @@ async function sendComment() {
     toast(T('cm.thanks'));
     loadComments();
   } catch (e) {
-    toast(T('cm.needSql'));
+    toast(/rate-limit/.test(String(e && e.message)) ? 'استقبلنا آراء كتير منك — جرّب تاني بعد ساعة' : T('cm.needSql'));
   }
   btn.disabled = false;
 }

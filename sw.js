@@ -9,7 +9,7 @@
      • من غير نت                  →  آخر نسخة متخزنة تشتغل عادي
    ══════════════════════════════════════════════════════════════ */
 
-const VERSION = 'nawah-v16';
+const VERSION = 'nawah-v15';
 
 /* يتخزنوا من أول زيارة عشان الشغل بدون إنترنت */
 const SHELL = [
@@ -24,11 +24,9 @@ const SHELL = [
   './community.js',
   './paper.js',
   './inbox.js',
-  './system.js',
   './paper.css',
-  './vendor/html2canvas.min.js',
-  './vendor/jspdf.umd.min.js',
-  './vendor/qrcode.min.js',
+  /* مكتبات الـPDF (≈٥٨٠ ك.ب) مش هنا: بتتحمّل وتتخزن أول ما الإدارة تستخدمها،
+     فالساكن مبيحمّلهاش خالص */
   './config.json',
   './manifest.webmanifest',
   './logo.png',

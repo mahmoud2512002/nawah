@@ -293,16 +293,6 @@ async function loadConfig() {
     if (res.ok) remote = await res.json();
   } catch (e) { /* offline — fall back to whatever we cached */ }
 
-  if (remote) {
-    /* الإعدادات اللي اتحفظت من لوحة الإدارة في السيرفر فوق الملف (system.js) */
-    const srv = typeof fetchServerConfig === 'function' ? await fetchServerConfig(remote) : undefined;
-    if (srv) remote = mergeServerConfig(remote, srv);
-    else if (srv === undefined) {
-      /* معرفناش نوصل للسيرفر: آخر نسخة منشورة شفناها أحدث من الملف؟ */
-      const c = store.get('cfgCache', null);
-      if (c && Number(c.version || 0) > Number(remote.version || 0)) remote = Object.assign(c, { backend: remote.backend });
-    }
-  }
   if (!remote) remote = store.get('cfgCache', null);
   if (!remote) { fatal(T('err.config')); return false; }
 
@@ -332,7 +322,6 @@ function deepMerge(base, over) {
 function saveDraft() {
   CFG.version = Number((REMOTE && REMOTE.version) || 0) + 1;
   store.set('cfgDraft', CFG);
-  if (typeof cfgSaveSoon === 'function' && cfgSaveSoon()) return;   // بيتحفظ في السيرفر ويوصل للكل
   $('#pubDot') && ($('#pubDot').hidden = false);
 }
 const hasDraft = () => !!store.get('cfgDraft', null);
@@ -419,7 +408,6 @@ function paintHomeCnt(c) {
   $('#cOpen').textContent = num(c.open | 0);
   $('#cWork').textContent = num(c.work | 0);
   $('#cDone').textContent = num(c.done | 0);
-  if ($('#cAll')) $('#cAll').textContent = num(c.all != null ? c.all | 0 : (c.open | 0) + (c.work | 0) + (c.done | 0));
 }
 
 function localHomeCnt() {
@@ -431,8 +419,7 @@ function localHomeCnt() {
   return {
     open: requests.filter(isNew).length,
     work: requests.filter((r) => !isNew(r) && (r.stage | 0) < 3).length,
-    done: requests.filter((r) => (r.stage | 0) >= 3).length,
-    all: requests.length
+    done: requests.filter((r) => (r.stage | 0) >= 3).length
   };
 }
 
@@ -448,7 +435,7 @@ async function fetchHomeCnt() {
     if (Array.isArray(v)) v = v[0];
     if (v && v.request_stage_counts) v = v.request_stage_counts;
     if (v && typeof v === 'object' && 'done' in v) {
-      const c = { open: v.open | 0, work: v.work | 0, done: v.done | 0, all: v.all != null ? v.all | 0 : (v.open | 0) + (v.work | 0) + (v.done | 0) };
+      const c = { open: v.open | 0, work: v.work | 0, done: v.done | 0 };
       NAWAH_HOMECNT.at = Date.now();
       store.set('homeCounts', c);
       paintHomeCnt(c);
@@ -829,8 +816,6 @@ function renderAdmin() {
   if (adminTab === 'inbox')     { if (!box.querySelector('.inbox')) box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admInbox(box); }
   if (adminTab === 'archive')   { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admArchive(box); }
   if (adminTab === 'orders')    { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admOrders(box); }
-  if (adminTab === 'log')       { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admLog(box); }
-  if (adminTab === 'health')    { box.innerHTML = `<p class="fine center">${esc(T('loading'))}</p>`; admHealth(box); }
 }
 
 function admServices() {
@@ -945,14 +930,11 @@ function admLock() {
     <label class="fld"><span>عنوان رسالة الإغلاق</span><input data-c="lockTitle" value="${esc(CFG.lockTitle||'')}"></label>
     <label class="fld"><span>نص الرسالة</span><textarea data-c="lockMessage" rows="3">${esc(CFG.lockMessage||'')}</textarea></label>
 
-    ${DB.ready() ? `<div class="note-box ok">
-      <b>القفل والفتح بيوصلوا لكل الناس فوراً</b>
-      <p>أول ما تضغط، الموقع بيتقفل أو يتفتح عند الكل من غير نشر.${DEVICE_OK ? '' : ' (لازم الجهاز ده يكون معتمد من «أجهزة الإدارة».)'}</p>
-    </div>` : `<div class="note-box ${CFG.locked !== remoteOn ? 'warn' : ''}">
+    <div class="note-box ${CFG.locked !== remoteOn ? 'warn' : ''}">
       <b>${CFG.locked !== remoteOn ? '⚠️ التغيير لسه محلي' : 'الحالة المنشورة'}</b>
-      <p>الحالة المنشورة دلوقتي: <b>${remoteOn ? 'مقفول' : 'مفتوح'}</b>.
+      <p>الحالة على السيرفر دلوقتي: <b>${remoteOn ? 'مقفول' : 'مفتوح'}</b>.
       ${CFG.locked !== remoteOn ? 'عشان القفل/الفتح يوصل لكل الناس، روح تبويب «نشر» واتبع الخطوة.' : ''}</p>
-    </div>`}
+    </div>
 
     <div class="note-box">
       <b>قفل كامل (يشيل الموقع من النت)</b>
@@ -963,7 +945,6 @@ function admLock() {
 }
 
 function admPublish() {
-  if (typeof admPublishServer === 'function' && canSaveConfig()) return admPublishServer();
   const draftOn = hasDraft();
   return `
     <div class="note-box ${draftOn ? 'warn' : 'ok'}">
@@ -1173,10 +1154,14 @@ function initAdmin() {
     if (act === 'togglelock') {
       const want = !CFG.locked;
       if (DB.ready()) {
-        (DEVICE_OK && DEVICE ? DB.setLockDevice(DEVICE.id, DEVICE.token, want) : DB.setLock(want, ADMIN_PIN))
+        /* القفل من جهاز إدارة معتمد بس — مفيش قفل بكلمة المرور لوحدها */
+        if (!(typeof DEVICE_OK !== 'undefined' && DEVICE_OK && DEVICE)) {
+          toast('القفل من جهاز إدارة معتمد بس — اعتمد الجهاز ده الأول من «الطلبات المستلمة»');
+          return;
+        }
+        DB.setLockDevice(DEVICE.id, DEVICE.token, want)
           .then(() => {
             CFG.locked = want;
-            if (REMOTE) REMOTE.locked = want;
             saveDraft();
             toast(T(want ? 'adm.lockedNow2' : 'adm.openedNow2'));
             renderAdmin();
